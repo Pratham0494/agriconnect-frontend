@@ -1,26 +1,82 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { getCookie } from './api/axios'; 
 import './App.css';
+
 import Login from './login';
 import ChangePass from './forgot_password'; 
-// 1. Import the new Reset Confirmation component
 import ResetConfirm from './ResetConfirm'; 
+
+import DashboardLayout from './Dashboard.jsx'; 
+import FarmerList from './FarmerList.jsx'; 
+import CropList from './croplist.jsx'; 
+import StockList from './stock.jsx'; 
+import WholesalerList from './WholesalerList.jsx';
+import FarmerStock from './farmerstock.jsx'; 
+
+// IMPORT THE NEW WHOLESALER STOCK MASTER PAGE
+import WholesalerStockMaster from './WholesalerStockMaster.jsx'; 
+// NEW: Import the Wholesaler Stock Detail component
+import WholesalerStockDetail from './WholesalerStockDetail.jsx'; 
+
+const ProtectedRoute = ({ children }) => {
+  const token = getCookie("access_token");
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+const DashboardOverview = () => (
+  <div style={{ padding: '20px' }}>
+    <h2 style={{ color: '#1b5e20', fontWeight: '900', fontSize: '24px', marginBottom: '10px' }}>
+      ADMIN CONTROL CENTER
+    </h2>
+    <p style={{ color: '#666', fontSize: '14px', fontWeight: '500' }}>
+      Logged in as System Administrator. Monitoring all Farmer and Wholesaler activities.
+    </p>
+  </div>
+);
 
 function App() {
   return (
     <Router>
       <div className="App">
         <Routes>
-          {/* Default page is Login */}
-          <Route path="/" element={<Login />} />
-          <Route path="/login" element={<Login />} />
           
-          {/* Route for the initial Forgot Password request */}
-          <Route path="/forgot_password" element={<ChangePass />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* 2. New Dynamic Route for setting the new password */}
-          {/* The :uid and :token are variables that match the link in your terminal */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot_password" element={<ChangePass />} />
           <Route path="/password-reset-confirm/:uidb64/:token" element={<ResetConfirm />} />
+
+          <Route 
+            path="/admin-dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardOverview />} />
+            
+            <Route path="farmers" element={<FarmerList />} />
+            <Route path="crops" element={<CropList />} />
+            <Route path="farmer-stock" element={<FarmerStock />} />
+            <Route path="stock" element={<StockList />} />
+            
+            <Route path="wholesalers" element={<WholesalerList />} />
+            
+            {/* WHOLESALER STOCK ROUTES */}
+            <Route path="wholesaler-stock" element={<WholesalerStockMaster />} />
+            
+            {/* NEW: Added Wholesaler Stock Detail route */}
+            <Route path="wholesaler-stock-detail" element={<WholesalerStockDetail />} />
+            
+          </Route>
+
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
     </Router>

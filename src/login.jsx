@@ -1,81 +1,63 @@
-import axios from 'axios';
+import api, { setCookie } from './api/axios.js'; 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
-function Login(){
-  const [loading, setLoading] = useState(false);
+function Login() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
-  const [password , setpassword] = useState('');
+  const [password, setpassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [apiError, setApiError] = useState(''); 
+  const [focusField, setFocusField] = useState(null);
 
-  const [emailError , setEmailError] = useState('');
-  const [passwordError , setPasswordError] = useState('');
-
-  const [focusField , setFocusField] = useState(null);
-
-  const handlesubmit = async (e) =>{
+  const handlesubmit = async (e) => {
     e.preventDefault();
-    
     let isValid = true;
+    setApiError('');
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if(email.trim() === ''){
-      setEmailError("Please fill this field");
+    if (email.trim() === '') {
+      setEmailError("REQUIRED FIELD");
       isValid = false;
-    }else if(!emailRegex.test(email)){
-      setEmailError("Please enter a valid email address");
+    } else if (!emailRegex.test(email)) {
+      setEmailError("INVALID EMAIL FORMAT");
       isValid = false;
-    }else{
+    } else {
       setEmailError('');
     }
 
-    const specialChars = /[!@#$%^&*]/;
-    let errorsList = [];
-    if(password.trim() === '') {
-      errorsList.push("Please fill this field");
+    if (password.trim() === '') {
+      setPasswordError("REQUIRED FIELD");
       isValid = false;
-    } 
-    if (password.length < 6 ) {
-      errorsList.push("• be at least 6 characters long");
-    }
-    if (!/[A-Z]/.test(password)) {
-      errorsList.push("• Must contain at least one uppercase letter");
-    }
-    if (!specialChars.test(password)) {
-      errorsList.push("• Need at least one special characters(!@#$%^&*)");
-    }
-    if (errorsList.length > 0) {
+    } else if (password.length < 8) {
+      setPasswordError("MINIMUM 8 CHARACTERS REQUIRED");
       isValid = false;
+    } else {
+      setPasswordError('');
     }
 
-    setPasswordError(errorsList.join('\n'));
-
-    if (isValid){
+    if (isValid) {
       setLoading(true);
-      try{
-        console.log("Attempting to login with :",email);
-        const response = await axios.post('http://localhost:8000/admin-api/api/token/', {
+      try {
+        
+        
+        const response = await api.post('admin-api/api/token/', {
           email: email.trim(),
           password: password.trim()
-        } , {
-          withCredentials : true
         });
 
-        localStorage.setItem('access_token', response.data.access);
+        const { access, refresh } = response.data;
+        setCookie('access_token', access, 1);
+        setCookie('refresh_token', refresh, 14);
 
-        console.log("Login Successful!",response.data);
-        // navigate('/admin-dashboard');
-        alert("Login Successful! Redirecting to Admin Dashboard...");
+        navigate('/admin-dashboard');
       } catch (error) {
-        console.error("Login Error :", error.response?.data);
-
-        if(error.response){
-          alert("Login failed :" + (error.response.data.detail || "Invalid Credentials"));
-        } else{
-          alert("Server Error : Please make sure the Django backend is running.")
-        }
-      } finally{
+        console.error("Login Error:", error.response?.data);
+        
+        setApiError(error.response?.data?.detail || "AUTHENTICATION FAILED. VERIFY CREDENTIALS.");
+      } finally {
         setLoading(false);
       }
     }
@@ -83,22 +65,25 @@ function Login(){
 
   const getInputStyle = (fieldName) => ({
     ...styles.input,
-    borderColor: focusField === fieldName ? '#4caf50' : '#ccc',
-    boxShadow: focusField === fieldName ? '0 0 8px rgba(76,175,80,0.3)' : 'none',
-    outline: 'none',
+    borderColor: focusField === fieldName ? '#2e7d32' : '#ddd',
+    boxShadow: focusField === fieldName ? '0 0 4px rgba(46,125,50,0.1)' : 'none',
   });
 
-  return(
-    <div style={styles.pageBg}> 
+  return (
+    <div style={styles.pageBg}>
       <div style={styles.card}>
-        <div style={styles.iconContainer}>🌱</div>
-        <h2 style={styles.header}>Admin Login</h2>
-        <form onSubmit={handlesubmit}>
+        <h2 style={styles.header}>ADMINISTRATIVE ACCESS</h2>
+        <p style={styles.subtext}>Secure portal for system management and operations.</p>
+        
+        {apiError && <div style={styles.apiErrorBox}>{apiError}</div>}
+
+        <form onSubmit={handlesubmit} noValidate>
           <div style={styles.inputGroup}>
             <label style={styles.label}>Email Address</label>
             <input
               type='email'
-              placeholder='example@gmail.com'
+              autoComplete="email"
+              placeholder='admin@aggriconnect.com'
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onFocus={() => setFocusField('email')}
@@ -112,21 +97,20 @@ function Login(){
             <label style={styles.label}>Password</label>
             <input
               type='password'
-              placeholder='******'
+              autoComplete="current-password"
+              placeholder='••••••••'
               value={password}
               onChange={(e) => setpassword(e.target.value)}
               onFocus={() => setFocusField('password')}
               onBlur={() => setFocusField(null)}
               style={getInputStyle('password')}
             />
-
             <div style={styles.forgotPasswordContainer}>
-              
               <Link to='/forgot_password' style={styles.link}>Forgot Password?</Link>
             </div>
-
             <div style={styles.errorText}>{passwordError}</div>
           </div>
+
           <button
             type='submit'
             style={{
@@ -136,7 +120,7 @@ function Login(){
             }}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'SYNCHRONIZING...' : 'SIGN IN'}
           </button>
         </form>
       </div>
@@ -146,7 +130,6 @@ function Login(){
 
 
 const styles = {
-
   pageBg: {
     minHeight: '100vh',
     width: '100vw',
@@ -157,92 +140,94 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  card:{
+  card: {
     width: '90%',
-    maxWidth:'350px',
-    backgroundColor:'rgba(255,255,255,0.98)',
-    margin: '20px auto',
-    padding: '40px 30px',
-    border:'1px solid #c8e6c9',
-    borderTop:'5px solid #4caf50',
-    borderBottom:'6px solid #4caf50',
-    borderRadius : '16px',
+    maxWidth: '420px',
+    backgroundColor: '#ffffff',
+    padding: '50px 40px',
+    borderRadius: '4px',
     textAlign: 'center',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-    fontFamily: 'Arial, sans-serif',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+    borderTop: '4px solid #2e7d32',
+    fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   },
-
-  inputGroup:{
-    marginBottom: '15px',
+  header: {
+    color: '#333',
+    fontSize: '20px',
+    fontWeight: '800',
+    margin: '0 0 8px 0',
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase'
+  },
+  subtext: {
+    fontSize: '13px',
+    color: '#777',
+    marginBottom: '35px',
+    lineHeight: '1.4'
+  },
+  inputGroup: {
+    marginBottom: '20px',
     textAlign: 'left',
-    display:'flex',
-    flexDirection:'column',
   },
-
-  input:{
-    width:'100%',
-    padding:'12px',
-    fontSize:'14px',
-    border:'1px solid #ccc',
-    borderRadius:'6px',
-    boxSizing:'border-box',
-    marginTop:'5px',
-    transition:'all 0.3s ease',
+  label: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#555',
+    marginBottom: '8px',
+    display: 'block',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
   },
-
-  button:{
+  input: {
     width: '100%',
-    padding: '10px',
-    backgroundColor: '#28a745',
+    padding: '12px 15px',
+    fontSize: '14px',
+    border: '1px solid #ddd',
+    borderRadius: '2px',
+    boxSizing: 'border-box',
+    outline: 'none',
+    backgroundColor: '#fafafa'
+  },
+  button: {
+    width: '100%',
+    padding: '15px',
+    backgroundColor: '#2e7d32',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    marginTop:'10px',
-    fontSize:'16px',
-    fontWeight:'bold',
-    transition:'all 0.3s ease',
-    boxShadow:'0 2px 4px rgba(0,0,0,0.1)',
+    borderRadius: '2px',
+    fontSize: '13px',
+    fontWeight: '700',
+    marginTop: '10px',
+    letterSpacing: '1px',
+    textTransform: 'uppercase'
   },
-
-  errorText:{
-    color:'red',
-    fontSize:'12px',
-    marginTop:'5px',
-    whiteSpace:'pre-line',
-    lineHeight:'1.4',
+  errorText: {
+    color: '#d32f2f',
+    fontSize: '10px',
+    fontWeight: '600',
+    marginTop: '4px',
+    height: '12px', 
   },
-
-  forgotPasswordContainer:{
-    textAlign:'left',
-    marginTop:'4px',
-    marginBottom:'8px'
+  apiErrorBox: {
+    backgroundColor: '#fcf1f1',
+    color: '#b71c1c',
+    padding: '12px',
+    borderRadius: '2px',
+    fontSize: '12px',
+    marginBottom: '25px',
+    border: '1px solid #e57373',
+    textAlign: 'left',
+    fontWeight: '500'
   },
-
-  link:{
-    fontSize:'12px',
-    color:'#1e7e34',
-    textDecoration:'none',
-    fontWeight:'500',
+  forgotPasswordContainer: {
+    textAlign: 'right',
+    marginTop: '4px'
   },
-
-  header:{
-    color:'#1b5e20',
-    fontSize:'26px',
-    fontWeight:'800',
-    margin:'20px 0 30px 0',
-    letterSpacing:'1.5px',
-    textTransform:'uppercase',
-    fontFamily:'"Segoe UI" , Tahoma , sans-serif',
-    textShadow:'1px 1px 2px rgba(0,0,0,0.05)',
-  },
-
-  iconContainer:{
-    fontSize:'50px',
-    marginBottom:'5px',
-    display:'flex',
-    justifyContent:'center',
+  link: {
+    fontSize: '12px',
+    color: '#2e7d32',
+    textDecoration: 'none',
+    fontWeight: '600',
   }
 };
 

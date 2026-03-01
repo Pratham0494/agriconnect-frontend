@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { useState } from "react";
+import api from './api/axios.js';
+import React, { useState } from "react";
 import { Link } from 'react-router-dom';
 
 function ChangePass() {
@@ -9,52 +9,54 @@ function ChangePass() {
   const [loading, setLoading] = useState(false);
 
   const handleForgotPassword = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setMessage("Processing..."); // Show the user the app is "working out"
-  setIsError(false);
+    e.preventDefault();
+    setLoading(true);
+    setMessage(""); 
+    setIsError(false);
 
-  try {
-    const response = await axios.post(
-      "http://localhost:8000/admin-api/password-reset-request/",
-      { email: email },
-      { withCredentials: true }
-    );
+    try {
+      
+      const response = await api.post("admin-api/password-reset-request/", { 
+        email: email.trim() 
+      });
 
-    if (response.status === 200) {
-      setMessage("Success! If the account exists, a check your email for the reset link.");
-      setIsError(false);
-      setEmail("");
+      
+      if (response.status === 200) {
+        setMessage("Instructional link sent. Please check your inbox if the account exists.");
+        setIsError(false);
+        setEmail("");
+      }
+    } catch (error) {
+      console.error("Reset Request Error:", error.response?.data);
+      
+      
+      const errorData = error.response?.data;
+      if (errorData?.email) {
+        setMessage(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+      } else {
+        setMessage("Unable to process request. Please verify your email or try again later.");
+      }
+      setIsError(true);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Reset Error:", error.response?.data);
-    
-    // Better Error Logic:
-    if (error.response?.status === 404) {
-      setMessage("This email is not registered in our system.");
-    } else {
-      setMessage(error.response?.data?.email || "Server error. Is Redis running?");
-    }
-    setIsError(true);
-  } finally{
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div style={styles.pageBg}>
       <div style={styles.card}>
         <div style={styles.logo}>🌱</div>
 
-        <h2 style={styles.header}>FORGOT PASSWORD</h2>
-        <p style={styles.subtext}>Enter your registered email to receive a reset link.</p>
+        <h2 style={styles.header}>Reset Access</h2>
+        <p style={styles.subtext}>Enter your registered email to receive recovery instructions.</p>
 
-        <form onSubmit={handleForgotPassword}>
+        <form onSubmit={handleForgotPassword} noValidate>
           <div style={styles.inputGroup}>
             <label style={styles.label}>Registered Email</label>
             <input
               type="email"
-              placeholder="example@gmail.com"
+              autoComplete="email"
+              placeholder="admin@aggriconnect.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -71,19 +73,24 @@ function ChangePass() {
             }}
             disabled={loading}
           >
-            {loading ? "Sending..." : "Send Reset Link"}
+            {loading ? "Processing..." : "Request Reset Link"}
           </button>
         </form>
 
         {message && (
-          <p style={{ ...styles.message, color: isError ? '#d32f2f' : '#2fad4f' }}>
+          <div style={{ 
+            ...styles.messageBox, 
+            backgroundColor: isError ? '#ffebee' : '#e8f5e9',
+            color: isError ? '#c62828' : '#2e7d32',
+            border: `1px solid ${isError ? '#ef9a9a' : '#a5d6a7'}`
+          }}>
             {message}
-          </p>
+          </div>
         )}
 
         <div style={styles.footer}>
           <Link to="/login" style={styles.link}>
-            ← Back to Login
+            &larr; Return to Sign In
           </Link>
         </div>
       </div>
@@ -91,27 +98,26 @@ function ChangePass() {
   );
 }
 
-// Integrated CSS Styles (Combining your friend's design with your theme)
+
 const styles = {
   pageBg: {
     minHeight: '100vh',
-    width:'100vw',
+    width: '100vw',
     backgroundImage: 'url("https://images.unsplash.com/photo-1533460004989-cef01064af7e?fm=jpg&q=60&w=3000")',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontFamily: 'Arial, sans-serif',
+    fontFamily: '"Segoe UI", Roboto, Arial, sans-serif',
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: '#ffffff',
     width: '90%',
-    maxWidth: '380px',
-    padding: '40px 30px',
-    borderRadius: '16px',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-    borderTop: '5px solid #4caf50',
+    maxWidth: '400px',
+    padding: '45px 35px',
+    borderRadius: '12px',
+    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.2)',
     textAlign: 'center',
   },
   logo: {
@@ -119,59 +125,66 @@ const styles = {
     marginBottom: '10px',
   },
   header: {
-    color: '#1b5e20',
+    color: '#2e7d32',
     fontSize: '22px',
-    fontWeight: '800',
+    fontWeight: '700',
     margin: '10px 0',
-    letterSpacing: '1px',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
   },
   subtext: {
-    fontSize: '13px',
-    color: '#666',
-    marginBottom: '20px',
+    fontSize: '14px',
+    color: '#555',
+    marginBottom: '25px',
+    lineHeight: '1.5'
   },
   inputGroup: {
     textAlign: 'left',
-    marginBottom: '15px',
+    marginBottom: '20px',
   },
   label: {
     display: 'block',
-    fontSize: '14px',
-    marginBottom: '5px',
-    color: '#333',
-    fontWeight: '600',
+    fontSize: '12px',
+    marginBottom: '6px',
+    color: '#444',
+    fontWeight: '700',
+    textTransform: 'uppercase'
   },
   input: {
     width: '100%',
-    padding: '12px',
-    borderRadius: '6px',
+    padding: '12px 14px',
+    borderRadius: '4px',
     border: '1px solid #ccc',
     fontSize: '14px',
     boxSizing: 'border-box',
+    outline: 'none',
   },
   button: {
     width: '100%',
-    padding: '12px',
-    backgroundColor: '#28a745',
+    padding: '14px',
+    backgroundColor: '#2e7d32',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: '16px',
-    fontWeight: 'bold',
+    borderRadius: '4px',
+    fontSize: '15px',
+    fontWeight: '600',
     cursor: 'pointer',
-    transition: '0.3s',
+    transition: 'background 0.2s',
   },
-  message: {
-    marginTop: '15px',
-    fontSize: '14px',
-    fontWeight: 'bold',
+  messageBox: {
+    marginTop: '20px',
+    padding: '12px',
+    fontSize: '13px',
+    borderRadius: '4px',
+    fontWeight: '500',
+    lineHeight: '1.4'
   },
   footer: {
-    marginTop: '20px',
+    marginTop: '25px',
   },
   link: {
     fontSize: '13px',
-    color: '#1e7e34',
+    color: '#2e7d32',
     textDecoration: 'none',
     fontWeight: '600',
   }
