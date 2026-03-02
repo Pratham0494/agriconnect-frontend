@@ -20,8 +20,6 @@ import FilePresentIcon from "@mui/icons-material/FilePresent";
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery";
 
-/** * Clean Const Style Configuration
- */
 const stringOperators = getGridStringOperators().filter((op) => 
     ['contains', 'equals', 'startsWith', 'endsWith'].includes(op.value)
 );
@@ -122,21 +120,49 @@ function WholesalerList() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
+    const handleInputChange = (field, value) => {
+        setFormData({ ...formData, [field]: value });
+        if (errors[field]) {
+            const newErrors = { ...errors };
+            delete newErrors[field];
+            setErrors(newErrors);
+        }
+    };
+
     const validateForm = () => {
         let tempErrors = {};
+        // Backend Regex Patterns
+        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+        const aadharRegex = /^[2-9]{1}[0-9]{11}$/;
+        const phoneRegex = /^[0-9]{10,11}$/;
+
         if (!formData.business_name) tempErrors.business_name = "Business Name is required";
         if (!formData.email) tempErrors.email = "Email is required";
         else if (!/\S+@\S+\.\S+/.test(formData.email)) tempErrors.email = "Invalid Email format";
+        
         if (!formData.w_phone) tempErrors.w_phone = "Phone number is required";
-        else if (!/^\d{10,11}$/.test(formData.w_phone)) tempErrors.w_phone = "Phone must be 10-11 digits";
+        else if (!phoneRegex.test(formData.w_phone)) tempErrors.w_phone = "Enter a valid 10 or 11 digit Phone number";
+        
         if (!selectedId) {
             if (!formData.password) tempErrors.password = "Password is required";
             if (formData.password !== formData.confirm_password) tempErrors.confirm_password = "Passwords do not match";
         }
+
+        if (!formData.first_name) tempErrors.first_name = "First name is required";
+        if (!formData.city) tempErrors.city = "City is required";
+
         if (!formData.gst_no) tempErrors.gst_no = "GST Number is required";
+        else if (!gstRegex.test(formData.gst_no)) tempErrors.gst_no = "Enter a valid 15-digit GST number (Format: 22AAAAA0000A1Z5)";
+
         if (!formData.pan_no) tempErrors.pan_no = "PAN is required";
+        else if (!panRegex.test(formData.pan_no)) tempErrors.pan_no = "Enter a valid 10-digit PAN number (e.g., ABCDE1234F)";
+
         if (!formData.aadhar_no) tempErrors.aadhar_no = "Aadhar is required";
+        else if (!aadharRegex.test(formData.aadhar_no)) tempErrors.aadhar_no = "Invalid Aadhar Number (12 digits, cannot start with 0 or 1)";
+
         if (!formData.business_proof && !selectedId) tempErrors.business_proof = "Business proof document is required";
+        
         setErrors(tempErrors);
         return Object.keys(tempErrors).length === 0;
     };
@@ -241,7 +267,6 @@ function WholesalerList() {
         }
     ], []);
 
-    // Exact Print Content Structure - Matches Horizontal List Style
     const printContent = useMemo(() => (
         <div id="print-section" className="print-only">
             <div className="print-header">
@@ -327,48 +352,79 @@ function WholesalerList() {
                     <Grid container spacing={3}>
                         <Grid item xs={12} md={3} sx={styles.photoUploadArea}>
                             <Avatar src={preview || (typeof formData.w_photo === 'string' ? formData.w_photo : null)} sx={styles.formAvatar} />
-                            <Button variant="outlined" component="label" sx={styles.uploadBtn}>SELECT PHOTO
+                            <Button variant="outlined" component="label" sx={styles.uploadBtn} color={errors.w_photo ? "error" : "success"}>SELECT PHOTO
                                 <input type="file" hidden accept="image/*" onChange={(e) => { 
                                     const file = e.target.files[0]; 
-                                    if (file) { setFormData({...formData, w_photo: file}); setPreview(URL.createObjectURL(file)); }
+                                    if (file) { 
+                                        handleInputChange("w_photo", file);
+                                        setPreview(URL.createObjectURL(file)); 
+                                    }
                                 }} />
                             </Button>
                             {errors.w_photo && <Typography color="error" variant="caption">{errors.w_photo}</Typography>}
                         </Grid>
                         <Grid item xs={12} md={9}>
                             <Grid container spacing={2}>
-                                <Grid item xs={12}><TextField error={!!errors.business_name} helperText={errors.business_name} fullWidth label="Business Name *" size="small" value={formData.business_name} onChange={e => setFormData({...formData, business_name: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField error={!!errors.email} helperText={errors.email} fullWidth label="Email Address *" size="small" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField error={!!errors.w_phone} helperText={errors.w_phone} fullWidth label="Phone *" size="small" value={formData.w_phone} onChange={e => setFormData({...formData, w_phone: e.target.value})} /></Grid>
+                                <Grid item xs={12}>
+                                    <TextField error={!!errors.business_name} helperText={errors.business_name} fullWidth label="Business Name *" size="small" value={formData.business_name} onChange={e => handleInputChange("business_name", e.target.value)} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField error={!!errors.email} helperText={errors.email} fullWidth label="Email Address *" size="small" value={formData.email} onChange={e => handleInputChange("email", e.target.value)} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField error={!!errors.w_phone} helperText={errors.w_phone} fullWidth label="Phone *" size="small" value={formData.w_phone} onChange={e => handleInputChange("w_phone", e.target.value)} />
+                                </Grid>
                                 {!selectedId && (
                                     <>
-                                        <Grid item xs={6}><TextField error={!!errors.password} helperText={errors.password} fullWidth type="password" label="Password *" size="small" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /></Grid>
-                                        <Grid item xs={6}><TextField error={!!errors.confirm_password} helperText={errors.confirm_password} fullWidth type="password" label="Confirm Password *" size="small" value={formData.confirm_password} onChange={e => setFormData({...formData, confirm_password: e.target.value})} /></Grid>
+                                        <Grid item xs={6}>
+                                            <TextField error={!!errors.password} helperText={errors.password} fullWidth type="password" label="Password *" size="small" value={formData.password} onChange={e => handleInputChange("password", e.target.value)} />
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <TextField error={!!errors.confirm_password} helperText={errors.confirm_password} fullWidth type="password" label="Confirm Password *" size="small" value={formData.confirm_password} onChange={e => handleInputChange("confirm_password", e.target.value)} />
+                                        </Grid>
                                     </>
                                 )}
-                                <Grid item xs={6}><TextField error={!!errors.first_name} helperText={errors.first_name} fullWidth label="First Name *" size="small" value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField error={!!errors.last_name} helperText={errors.last_name} fullWidth label="Last Name" size="small" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} /></Grid>
-                                <Grid item xs={4}><TextField error={!!errors.gst_no} helperText={errors.gst_no} fullWidth label="GST Number *" size="small" value={formData.gst_no} onChange={e => setFormData({...formData, gst_no: e.target.value.toUpperCase()})} /></Grid>
-                                <Grid item xs={4}><TextField error={!!errors.pan_no} helperText={errors.pan_no} fullWidth label="PAN Number *" size="small" value={formData.pan_no} onChange={e => setFormData({...formData, pan_no: e.target.value.toUpperCase()})} /></Grid>
-                                <Grid item xs={4}><TextField error={!!errors.aadhar_no} helperText={errors.aadhar_no} fullWidth label="Aadhar Number *" size="small" value={formData.aadhar_no} onChange={e => setFormData({...formData, aadhar_no: e.target.value})} /></Grid>
+                                <Grid item xs={6}>
+                                    <TextField error={!!errors.first_name} helperText={errors.first_name} fullWidth label="First Name *" size="small" value={formData.first_name} onChange={e => handleInputChange("first_name", e.target.value)} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField error={!!errors.last_name} helperText={errors.last_name} fullWidth label="Last Name" size="small" value={formData.last_name} onChange={e => handleInputChange("last_name", e.target.value)} />
+                                </Grid>
                                 <Grid item xs={4}>
-                                    <FormControl fullWidth size="small">
+                                    <TextField error={!!errors.gst_no} helperText={errors.gst_no} fullWidth label="GST Number *" size="small" value={formData.gst_no} onChange={e => handleInputChange("gst_no", e.target.value.toUpperCase())} />
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <TextField error={!!errors.pan_no} helperText={errors.pan_no} fullWidth label="PAN Number *" size="small" value={formData.pan_no} onChange={e => handleInputChange("pan_no", e.target.value.toUpperCase())} />
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <TextField error={!!errors.aadhar_no} helperText={errors.aadhar_no} fullWidth label="Aadhar Number *" size="small" value={formData.aadhar_no} onChange={e => handleInputChange("aadhar_no", e.target.value)} />
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <FormControl fullWidth size="small" error={!!errors.gender}>
                                         <InputLabel>Gender</InputLabel>
-                                        <Select label="Gender" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
-                                            <MenuItem value="M">MALE</MenuItem><MenuItem value="F">FEMALE</MenuItem>
+                                        <Select label="Gender" value={formData.gender} onChange={e => handleInputChange("gender", e.target.value)}>
+                                            <MenuItem value="M">MALE</MenuItem>
+                                            <MenuItem value="F">FEMALE</MenuItem>
                                         </Select>
+                                        {errors.gender && <FormHelperText>{errors.gender}</FormHelperText>}
                                     </FormControl>
                                 </Grid>
-                                <Grid item xs={4}><TextField error={!!errors.city} helperText={errors.city} fullWidth label="City" size="small" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></Grid>
-                                <Grid item xs={4}><TextField error={!!errors.state} helperText={errors.state} fullWidth label="State" size="small" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} /></Grid>
+                                <Grid item xs={4}>
+                                    <TextField error={!!errors.city} helperText={errors.city} fullWidth label="City *" size="small" value={formData.city} onChange={e => handleInputChange("city", e.target.value)} />
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <TextField error={!!errors.state} helperText={errors.state} fullWidth label="State" size="small" value={formData.state} onChange={e => handleInputChange("state", e.target.value)} />
+                                </Grid>
                                 <Grid item xs={12}>
-                                    <Button variant="outlined" component="label" fullWidth startIcon={<FilePresentIcon />} sx={{ borderStyle: 'dashed', color: errors.business_proof ? 'error.main' : 'inherit' }}>
+                                    <Button variant="outlined" component="label" fullWidth startIcon={<FilePresentIcon />} sx={{ borderStyle: 'dashed', color: errors.business_proof ? '#d32f2f' : '#2e7d32', borderColor: errors.business_proof ? '#d32f2f' : '#2e7d32' }}>
                                         {formData.business_proof?.name || "UPLOAD BUSINESS PROOF (PDF/IMAGE) *"}
-                                        <input type="file" hidden onChange={(e) => setFormData({...formData, business_proof: e.target.files[0]})} />
+                                        <input type="file" hidden onChange={(e) => handleInputChange("business_proof", e.target.files[0])} />
                                     </Button>
                                     {errors.business_proof && <FormHelperText error>{errors.business_proof}</FormHelperText>}
                                 </Grid>
-                                <Grid item xs={12}><TextField error={!!errors.address} helperText={errors.address} fullWidth multiline rows={2} label="Address" size="small" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></Grid>
+                                <Grid item xs={12}>
+                                    <TextField error={!!errors.address} helperText={errors.address} fullWidth multiline rows={2} label="Address" size="small" value={formData.address} onChange={e => handleInputChange("address", e.target.value)} />
+                                </Grid>
                             </Grid>
                         </Grid>
                     </Grid>
@@ -424,7 +480,7 @@ const styles = {
     modalTitle: { fontWeight: "900", color: "#1b5e20", textAlign: "left" },
     photoUploadArea: { display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" },
     formAvatar: { width: "150px", height: "150px", border: "2px solid #e0e0e0" },
-    uploadBtn: { fontSize: "10px", fontWeight: "900", color: "#1b5e20", borderColor: "#1b5e20" },
+    uploadBtn: { fontSize: "10px", fontWeight: "900", minWidth: "120px" },
     dialogActions: { padding: "16px", justifyContent: "flex-end", gap: "8px" },
     saveBtn: { backgroundColor: "#1b5e20", color: "#ffffff", fontWeight: "900", minWidth: "160px" },
     globalPrintStyles: {

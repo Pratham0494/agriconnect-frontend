@@ -71,7 +71,7 @@ const DashboardLayout = () => {
                         {isExpanded ? "WHOLESALER STOCK" : "WST"}
                     </NavLink>
 
-                    {/* MOVED: Wholesaler Stock Detail is now below Wholesaler Stock */}
+                    
                     <NavLink to="/admin-dashboard/wholesaler-stock-detail" style={getActiveStyle}>
                         {isExpanded ? "WHOLESALER STOCK DETAIL" : "WSD"}
                     </NavLink>
@@ -84,7 +84,7 @@ const DashboardLayout = () => {
                 </div>
             </aside>
 
-            {/* Main Content Area */}
+            
             <main style={{
                 ...styles.mainContentStyle,
                 marginLeft: isExpanded ? '240px' : '70px',
@@ -115,7 +115,7 @@ const DashboardLayout = () => {
     );
 };
 
-/* --- Clean Const Style CSS --- */
+
 const styles = {
     sidebarStyle: {
         backgroundColor: '#0a2e0c',

@@ -20,7 +20,6 @@ import PrintIcon from "@mui/icons-material/Print";
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery";
 
-// --- STRICT OPERATOR SELECTION ---
 const stringOperators = getGridStringOperators()
     .filter((op) => ['equals', 'contains', 'startsWith', 'endsWith'].includes(op.value));
 
@@ -83,6 +82,9 @@ function CropList() {
     const [filterModel, setFilterModel] = useState({ items: [] });
     const [selectedId, setSelectedId] = useState(null);
 
+    // Added Errors State for Red Field Validation
+    const [errors, setErrors] = useState({});
+
     const [formData, setFormData] = useState({
         crop_id: "", crop_name: "", crop_variety: "", photo: null, 
         description: "", deleted: false
@@ -124,6 +126,7 @@ function CropList() {
         });
         setPreview(null);
         setSelectedId(null);
+        setErrors({}); // Reset errors on form reset
     };
 
     const columns = useMemo(() => [
@@ -185,6 +188,7 @@ function CropList() {
                         setSelectedId(params.row.crop_id); 
                         setFormData({ ...params.row }); 
                         setPreview(params.row.photo); 
+                        setErrors({});
                         setOpen(true); 
                     }}>
                         <EditIcon fontSize="small" />
@@ -197,7 +201,22 @@ function CropList() {
         }
     ], []);
 
+    // Frontend Validation Logic
+    const validateForm = () => {
+        let tempErrors = {};
+        if (!formData.crop_name?.trim()) tempErrors.crop_name = "Crop Name is required";
+        else if (formData.crop_name.length > 50) tempErrors.crop_name = "Maximum 50 characters allowed";
+
+        if (!formData.crop_variety?.trim()) tempErrors.crop_variety = "Variety is required";
+        else if (formData.crop_variety.length > 100) tempErrors.crop_variety = "Maximum 100 characters allowed";
+
+        setErrors(tempErrors);
+        return Object.keys(tempErrors).length === 0;
+    };
+
     const handleSave = async () => {
+        if (!validateForm()) return; // Prevent submission if validation fails
+
         setSubmitLoading(true);
         const uploadData = new FormData();
         Object.keys(formData).forEach(key => {
@@ -225,6 +244,9 @@ function CropList() {
                 resetForm();
             }
         } catch (err) {
+            if (err.response?.data) {
+                setErrors(err.response.data); // Map backend errors to fields
+            }
             console.error("Save Error:", err.response?.data);
         } finally {
             setSubmitLoading(false);
@@ -302,9 +324,41 @@ function CropList() {
                                 }} />
                             </Button>
                         </Grid>
-                        <Grid item xs={12}><TextField fullWidth label="Crop Name *" size="small" value={formData.crop_name} onChange={(e) => setFormData({...formData, crop_name: e.target.value})} /></Grid>
-                        <Grid item xs={12}><TextField fullWidth label="Variety *" size="small" value={formData.crop_variety} onChange={(e) => setFormData({...formData, crop_variety: e.target.value})} /></Grid>
-                        <Grid item xs={12}><TextField fullWidth label="Description" size="small" multiline rows={3} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} /></Grid>
+                        <Grid item xs={12}>
+                            <TextField 
+                                fullWidth 
+                                label="Crop Name *" 
+                                size="small" 
+                                value={formData.crop_name} 
+                                error={!!errors.crop_name}
+                                helperText={errors.crop_name}
+                                onChange={(e) => setFormData({...formData, crop_name: e.target.value})} 
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField 
+                                fullWidth 
+                                label="Variety *" 
+                                size="small" 
+                                value={formData.crop_variety} 
+                                error={!!errors.crop_variety}
+                                helperText={errors.crop_variety}
+                                onChange={(e) => setFormData({...formData, crop_variety: e.target.value})} 
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField 
+                                fullWidth 
+                                label="Description" 
+                                size="small" 
+                                multiline 
+                                rows={3} 
+                                value={formData.description} 
+                                error={!!errors.description}
+                                helperText={errors.description}
+                                onChange={(e) => setFormData({...formData, description: e.target.value})} 
+                            />
+                        </Grid>
                     </Grid>
                 </DialogContent>
                 <DialogActions sx={styles.dialogActions}>
@@ -367,7 +421,7 @@ const styles = {
                 margin: 0, 
                 padding: "0px !important" 
             },
-            // Strictly hide header actions, pagination footer, and selection count
+            
             ".no-print, .MuiDataGrid-footerContainer, .MuiDataGrid-selectedRowCount": { 
                 display: "none !important" 
             },

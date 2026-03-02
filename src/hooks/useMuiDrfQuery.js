@@ -1,11 +1,5 @@
 import { useMemo } from 'react';
 
-/**
- * STRICTLY ALIGNED DRF QUERY HOOK
- * 1. Global Search: Uses 'search' param and overrides all column filters.
- * 2. Strict Fields: Aligned with CommonFilter (iexact) - farmer_name, crop_name.
- * 3. Suffix Mapping: Maps MUI operators to DRF suffixes for StockDetail fields.
- */
 export const useMuiDrfQuery = ({ 
     paginationModel, 
     sortModel = [], 
@@ -25,13 +19,13 @@ export const useMuiDrfQuery = ({
 
         const query = searchValue?.toString().trim();
 
-        // 1. GLOBAL SEARCH MODE (Priority)
+        
         if (query) {
             params[searchField] = query;
             return params; 
         } 
         
-        // 2. COLUMN FILTERS MODE
+        
         if (filterModel?.items && filterModel.items.length > 0) {
             filterModel.items.forEach((item) => {
                 const { field, operator, value } = item;
@@ -60,26 +54,19 @@ export const useMuiDrfQuery = ({
 
                 const suffix = operatorMap[operator] || '__iexact';
                 
-                /**
-                 * BACKEND ALIGNMENT BASED ON filters.py:
-                 * CommonFilter defines crop_name and farmer_name with lookup_expr="iexact".
-                 * These fields MUST NOT have suffixes.
-                 */
                 const strictFields = ['farmer_name', 'crop_name', 'wholesaler_name'];
 
                 if (strictFields.includes(field)) {
-                    // Result: ?farmer_name=weiobewuf (Matches iexact in backend)
-                    // We DO NOT append the suffix here because your CommonFilter 
-                    // handles the 'iexact' logic internally.
+
                     params[field] = formattedValue;
                 } else {
-                    // Result: ?quantity__gte=10 (Matches fields in StockDetailFilter)
+                    
                     params[`${field}${suffix}`] = formattedValue;
                 }
             });
         }
 
-        // 3. ORDERING LOGIC
+        
         if (Array.isArray(sortModel) && sortModel.length > 0) {
             const validSorts = sortModel
                 .filter(item => item.field !== 'total_price')

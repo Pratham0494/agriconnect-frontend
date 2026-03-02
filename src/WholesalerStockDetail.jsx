@@ -8,7 +8,7 @@ import {
 import {
     Box, TextField, Button, Dialog, DialogTitle, DialogContent,
     DialogActions, Grid, MenuItem, IconButton, Typography,
-    CircularProgress, InputAdornment, GlobalStyles, Avatar, Stack, Paper
+    CircularProgress, InputAdornment, GlobalStyles, Avatar, Stack, Paper, FormHelperText
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -20,7 +20,7 @@ import PrintIcon from "@mui/icons-material/Print";
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery";
 
-/* --- Strict Operator Definitions --- */
+// --- OPERATORS & FORMATTERS ---
 const stringOperators = getGridStringOperators().filter((op) => 
     ['contains', 'equals', 'startsWith', 'endsWith'].includes(op.value)
 );
@@ -51,9 +51,22 @@ function WholesalerStockDetail() {
     const [selectedId, setSelectedId] = useState(null);
     const [stockMasters, setStockMasters] = useState([]);
 
+    // Validation State
+    const [formErrors, setFormErrors] = useState({});
+
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
     const [sortModel, setSortModel] = useState([]);
     const [filterModel, setFilterModel] = useState({ items: [] });
+
+    const [formData, setFormData] = useState({
+        stock_id: "", 
+        quantity: "",
+        unit: "kg",
+        price_per_unit: "",
+        intake_date: new Date().toISOString().split('T')[0],
+        expiry_date: "",
+        warehouse_loc: ""
+    });
 
     const queryPayload = useMuiDrfQuery({
         paginationModel, 
@@ -107,17 +120,59 @@ function WholesalerStockDetail() {
         loadDependencies(); 
     }, [loadData, loadDependencies]);
 
-    const [formData, setFormData] = useState({
-        stock_id: "", 
-        quantity: "",
-        unit: "kg",
-        price_per_unit: "",
-        intake_date: new Date().toISOString().split('T')[0],
-        expiry_date: "",
-        warehouse_loc: ""
-    });
+    // Validation Logic Based on wholesaler/models.py
+    const validateField = (name, value) => {
+        let error = "";
+        switch (name) {
+            case "stock_id":
+                if (!value) error = "Required: Select a Wholesaler and Crop";
+                break;
+            case "quantity":
+                if (!value || value <= 0) error = "Quantity must be greater than 0";
+                if (value >= 1000000) error = "Quantity exceeds max limit (8 digits)";
+                break;
+            case "price_per_unit":
+                if (!value || value <= 0) error = "Price must be greater than 0";
+                if (value >= 10000000000) error = "Price exceeds max limit (12 digits)";
+                break;
+            case "expiry_date":
+                if (value && formData.intake_date) {
+                    if (new Date(value) <= new Date(formData.intake_date)) {
+                        error = "Expiry must be after Intake Date";
+                    }
+                }
+                break;
+            case "warehouse_loc":
+                if (value && value.length > 255) error = "Location cannot exceed 255 characters";
+                break;
+            default:
+                break;
+        }
+        return error;
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        // Immediate Validation
+        const error = validateField(name, value);
+        setFormErrors(prev => ({ ...prev, [name]: error }));
+    };
 
     const handleSave = async () => {
+        // Final validation check before submit
+        const newErrors = {};
+        Object.keys(formData).forEach(key => {
+            const err = validateField(key, formData[key]);
+            if (err) newErrors[key] = err;
+        });
+
+        if (Object.keys(newErrors).length > 0) {
+            setFormErrors(newErrors);
+            return; // Stop execution if errors exist
+        }
+
         setSubmitLoading(true);
         try {
             const payload = {
@@ -139,7 +194,10 @@ function WholesalerStockDetail() {
             setRefresh(p => p + 1);
             resetForm();
         } catch (err) { 
-            console.error("Save Error:", err.response?.data);
+            if (err.response?.data) {
+                // Map backend serializer errors to frontend
+                setFormErrors(err.response.data);
+            }
         } finally { setSubmitLoading(false); }
     };
 
@@ -162,6 +220,7 @@ function WholesalerStockDetail() {
             expiry_date: "", 
             warehouse_loc: ""
         });
+        setFormErrors({});
         setSelectedId(null);
     };
 
@@ -284,8 +343,10 @@ function WholesalerStockDetail() {
                         <Grid item xs={12} md={6}>
                             <TextField 
                                 select fullWidth label="Wholesaler / His Crop *" size="small" 
-                                disabled={!!selectedId} value={formData.stock_id} 
-                                onChange={(e) => setFormData({...formData, stock_id: e.target.value})}
+                                disabled={!!selectedId} name="stock_id" value={formData.stock_id} 
+                                onChange={handleInputChange}
+                                error={!!formErrors.stock_id}
+                                helperText={formErrors.stock_id}
                                 sx={styles.selectInput}
                             >
                                 {stockMasters.map(m => (
@@ -300,9 +361,16 @@ function WholesalerStockDetail() {
                             </TextField>
                         </Grid>
                         
-                        <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Quantity *" size="small" value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} /></Grid>
                         <Grid item xs={12} md={3}>
-                            <TextField select fullWidth label="Unit *" size="small" value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})}>
+                            <TextField 
+                                fullWidth type="number" name="quantity" label="Quantity *" size="small" 
+                                value={formData.quantity} onChange={handleInputChange}
+                                error={!!formErrors.quantity}
+                                helperText={formErrors.quantity}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField select fullWidth name="unit" label="Unit *" size="small" value={formData.unit} onChange={handleInputChange}>
                                 <MenuItem value="kg">kg</MenuItem>
                                 <MenuItem value="g">g</MenuItem>
                                 <MenuItem value="TON">TON</MenuItem>
@@ -310,11 +378,39 @@ function WholesalerStockDetail() {
                             </TextField>
                         </Grid>
 
-                        <Grid item xs={12} md={4}><TextField fullWidth type="number" label="Price per Unit *" size="small" value={formData.price_per_unit} onChange={(e) => setFormData({...formData, price_per_unit: e.target.value})} /></Grid>
-                        <Grid item xs={12} md={4}><TextField fullWidth type="date" label="Intake Date" size="small" InputLabelProps={{ shrink: true }} value={formData.intake_date} onChange={(e) => setFormData({...formData, intake_date: e.target.value})} /></Grid>
-                        <Grid item xs={12} md={4}><TextField fullWidth type="date" label="Expiry Date" size="small" InputLabelProps={{ shrink: true }} value={formData.expiry_date || ""} onChange={(e) => setFormData({...formData, expiry_date: e.target.value})} /></Grid>
+                        <Grid item xs={12} md={4}>
+                            <TextField 
+                                fullWidth type="number" name="price_per_unit" label="Price per Unit *" size="small" 
+                                value={formData.price_per_unit} onChange={handleInputChange} 
+                                error={!!formErrors.price_per_unit}
+                                helperText={formErrors.price_per_unit}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <TextField 
+                                fullWidth type="date" name="intake_date" label="Intake Date" size="small" 
+                                InputLabelProps={{ shrink: true }} value={formData.intake_date} onChange={handleInputChange} 
+                                error={!!formErrors.intake_date}
+                                helperText={formErrors.intake_date}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <TextField 
+                                fullWidth type="date" name="expiry_date" label="Expiry Date" size="small" 
+                                InputLabelProps={{ shrink: true }} value={formData.expiry_date || ""} onChange={handleInputChange} 
+                                error={!!formErrors.expiry_date}
+                                helperText={formErrors.expiry_date}
+                            />
+                        </Grid>
                         
-                        <Grid item xs={12} md={12}><TextField fullWidth label="Warehouse Location" size="small" value={formData.warehouse_loc || ""} onChange={(e) => setFormData({...formData, warehouse_loc: e.target.value})} /></Grid>
+                        <Grid item xs={12} md={12}>
+                            <TextField 
+                                fullWidth name="warehouse_loc" label="Warehouse Location" size="small" 
+                                value={formData.warehouse_loc || ""} onChange={handleInputChange} 
+                                error={!!formErrors.warehouse_loc}
+                                helperText={formErrors.warehouse_loc}
+                            />
+                        </Grid>
                         
                         {formData.quantity && formData.price_per_unit && (
                             <Grid item xs={12}>
@@ -337,7 +433,7 @@ function WholesalerStockDetail() {
     );
 }
 
-/* --- CLEAN CONST STYLE CSS --- */
+// --- CLEAN CONST STYLE CSS ---
 const styles = {
     container: { padding: "40px", backgroundColor: "#ffffff", minHeight: "100vh" },
     header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" },

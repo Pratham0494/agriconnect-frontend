@@ -4,7 +4,7 @@ import {
     Box, TextField, Button, Dialog, DialogTitle, DialogContent,
     DialogActions, MenuItem, IconButton, Typography, Select,
     FormControl, Avatar, CircularProgress, InputAdornment,
-    GlobalStyles, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
+    GlobalStyles, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, FormHelperText
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -14,7 +14,6 @@ import PrintIcon from "@mui/icons-material/Print";
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery";
 
-// --- AUTHORIZED IMAGE FETCHING (SECURE) ---
 const AuthorizedAvatar = ({ path, name, variant = "circular", size = 32 }) => {
     const [imgSrc, setImgSrc] = useState(null);
     const [fetching, setFetching] = useState(false);
@@ -63,16 +62,15 @@ const WholesalerStockMaster = () => {
     const [wholesalers, setWholesalers] = useState([]);
     const [crops, setCrops] = useState([]);
     const [masterSelection, setMasterSelection] = useState({ w_id: "", crop_id: "" });
+    const [errors, setErrors] = useState({});
 
     const [formRows, setFormRows] = useState([{ 
-        unit: "kg", quantity: "", price_per_unit: "", stored_location: "",
-        expiry_date: "" 
+        unit: "kg", quantity: "", price_per_unit: "", warehouse_loc: "",
+        expiry_date: "", intake_date: new Date().toISOString().split('T')[0]
     }]);
 
     const [editData, setEditData] = useState({ 
-        stock_id: null, 
-        w_id: "", 
-        crop_id: "" 
+        stock_id: null, w_id: "", crop_id: "" 
     });
 
     const queryPayload = useMuiDrfQuery({
@@ -103,16 +101,45 @@ const WholesalerStockMaster = () => {
     useEffect(() => { loadData(); }, [loadData]);
     useEffect(() => { loadOptions(); }, []);
 
-    const handleAddRow = () => setFormRows([...formRows, { unit: "kg", quantity: "", price_per_unit: "", stored_location: "", expiry_date: "" }]);
+    const handleAddRow = () => setFormRows([...formRows, { unit: "kg", quantity: "", price_per_unit: "", warehouse_loc: "", expiry_date: "", intake_date: new Date().toISOString().split('T')[0] }]);
     const handleRemoveRow = (idx) => { if (formRows.length > 1) setFormRows(formRows.filter((_, i) => i !== idx)); };
+    
     const handleInputChange = (idx, field, val) => {
         const updated = [...formRows];
         updated[idx][field] = val;
         setFormRows(updated);
+        const errorKey = `item_${idx}_${field}`;
+        if (errors[errorKey]) {
+            const newErrors = { ...errors };
+            delete newErrors[errorKey];
+            setErrors(newErrors);
+        }
+    };
+
+    const validateForm = () => {
+        let tempErrors = {};
+        if (!masterSelection.w_id) tempErrors.w_id = "Wholesaler selection required";
+        if (!masterSelection.crop_id) tempErrors.crop_id = "Crop association required";
+
+        formRows.forEach((row, idx) => {
+            // Updated validation messages here
+            if (!row.quantity || parseFloat(row.quantity) <= 0) {
+                tempErrors[`item_${idx}_quantity`] = "must be greater than 0";
+            }
+            if (!row.price_per_unit || parseFloat(row.price_per_unit) <= 0) {
+                tempErrors[`item_${idx}_price_per_unit`] = "must be greater than 0";
+            }
+            if (row.expiry_date && row.expiry_date < row.intake_date) {
+                tempErrors[`item_${idx}_expiry_date`] = "Expiry cannot be before intake";
+            }
+        });
+
+        setErrors(tempErrors);
+        return Object.keys(tempErrors).length === 0;
     };
 
     const handleSubmit = async () => {
-        if (!masterSelection.w_id || !masterSelection.crop_id) return;
+        if (!validateForm()) return;
         setSubmitLoading(true);
         try {
             const payload = {
@@ -123,39 +150,39 @@ const WholesalerStockMaster = () => {
             await axiosInstance.post('/wholesaler-api/stock-master/', payload);
             setOpen(false);
             setRefresh(p => p + 1);
-            setFormRows([{ unit: "kg", quantity: "", price_per_unit: "", stored_location: "", expiry_date: "" }]);
+            setFormRows([{ unit: "kg", quantity: "", price_per_unit: "", warehouse_loc: "", expiry_date: "", intake_date: new Date().toISOString().split('T')[0] }]);
             setMasterSelection({ w_id: "", crop_id: "" });
-        } catch (err) { console.error(err.response?.data); } finally { setSubmitLoading(false); }
+            setErrors({});
+        } catch (err) { 
+            if (err.response?.data) setErrors(err.response.data);
+        } finally { setSubmitLoading(false); }
     };
 
     const handleEditClick = (row) => {
-        setEditData({
-            stock_id: row.stock_id,
-            w_id: row.w_id,
-            crop_id: row.crop_id
-        });
+        setEditData({ stock_id: row.stock_id, w_id: row.w_id, crop_id: row.crop_id });
+        setErrors({});
         setEditOpen(true);
     };
 
     const handleEditChange = (field, val) => {
         setEditData(prev => ({ ...prev, [field]: val }));
+        if (errors[field]) {
+            const newErrors = { ...errors };
+            delete newErrors[field];
+            setErrors(newErrors);
+        }
     };
 
     const handleEditSubmit = async () => {
         setSubmitLoading(true);
         try {
-            const payload = {
-                w_id: editData.w_id,
-                crop_id: editData.crop_id
-            };
+            const payload = { w_id: editData.w_id, crop_id: editData.crop_id };
             await axiosInstance.put(`/wholesaler-api/stock-master/${editData.stock_id}/`, payload);
             setEditOpen(false);
             setRefresh(p => p + 1);
         } catch (err) { 
-            console.error("Update Error:", err.response?.data); 
-        } finally { 
-            setSubmitLoading(false); 
-        }
+            if (err.response?.data) setErrors(err.response.data);
+        } finally { setSubmitLoading(false); }
     };
 
     const handleDelete = async (id) => {
@@ -216,7 +243,6 @@ const WholesalerStockMaster = () => {
         <Box sx={styles.container}>
             <GlobalStyles styles={printStyles} />
             
-            {/* SCREEN HEADER */}
             <Box sx={styles.header} className="no-print">
                 <Typography variant="h5" sx={styles.title}>WHOLESALER STOCK MASTER</Typography>
                 <Box sx={styles.headerActions}>
@@ -227,17 +253,15 @@ const WholesalerStockMaster = () => {
                         sx={styles.searchField}
                         InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
                     />
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)} sx={styles.addButton}>ADD WHOLESALE STOCK</Button>
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => {setErrors({}); setOpen(true);}} sx={styles.addButton}>ADD WHOLESALE STOCK</Button>
                 </Box>
             </Box>
 
-            {/* PRINT ONLY CONTENT AREA */}
             <Box className="print-only" sx={styles.printContainer}>
                 <Box sx={styles.farmerPrintHeader}>
                     <Typography sx={styles.farmerPrintLogo}>AGRO-I</Typography>
                     <Typography sx={styles.farmerPrintDate}>{new Date().toLocaleDateString('en-GB')}</Typography>
                 </Box>
-
                 <Table sx={styles.printTable}>
                     <TableHead>
                         <TableRow>
@@ -251,22 +275,15 @@ const WholesalerStockMaster = () => {
                         {rows.map((row) => (
                             <TableRow key={row.stock_id}>
                                 <TableCell sx={styles.printTableCell}>{row.stock_id}</TableCell>
-                                <TableCell sx={styles.printTableCell}>
-                                    {row.business_name} / {row.w_id}
-                                </TableCell>
-                                <TableCell sx={styles.printTableCell}>
-                                    {row.crop_name?.toUpperCase()} / {row.crop_id}
-                                </TableCell>
-                                <TableCell sx={styles.printTableCell}>
-                                    {row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : "N/A"}
-                                </TableCell>
+                                <TableCell sx={styles.printTableCell}>{row.business_name} / {row.w_id}</TableCell>
+                                <TableCell sx={styles.printTableCell}>{row.crop_name?.toUpperCase()} / {row.crop_id}</TableCell>
+                                <TableCell sx={styles.printTableCell}>{row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : "N/A"}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </Box>
 
-            {/* SCREEN TABLE */}
             <Box className="no-print">
                 <DataGrid
                     rows={rows} columns={columns} getRowId={(r) => r.stock_id}
@@ -279,12 +296,11 @@ const WholesalerStockMaster = () => {
                 />
             </Box>
 
-            {/* REGISTRATION DIALOG */}
             <Dialog open={open} onClose={() => !submitLoading && setOpen(false)} maxWidth="xl" fullWidth className="no-print">
                 <DialogTitle sx={styles.modalTitle}>WHOLESALER STOCK REGISTRATION</DialogTitle>
                 <DialogContent dividers>
                     <Box sx={styles.selectionHeaderArea}>
-                        <FormControl sx={styles.selectionBox} size="small">
+                        <FormControl sx={styles.selectionBox} size="small" error={!!errors.w_id}>
                             <Typography sx={styles.selectionLabel}>SELECT WHOLESALER</Typography>
                             <Select 
                                 value={masterSelection.w_id} 
@@ -300,16 +316,15 @@ const WholesalerStockMaster = () => {
                                     <MenuItem key={w.w_id} value={w.w_id} sx={{ py: 1 }}>
                                         <Stack direction="row" spacing={2} alignItems="center">
                                             <AuthorizedAvatar path={w.w_photo} name={w.business_name} size={30} />
-                                            <Typography sx={{ fontSize: '13px', fontWeight: '600' }}>
-                                                {w.business_name} / {w.w_id}
-                                            </Typography>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: '600' }}>{w.business_name} / {w.w_id}</Typography>
                                         </Stack>
                                     </MenuItem>
                                 ))}
                             </Select>
+                            {errors.w_id && <FormHelperText sx={{textAlign: 'center'}}>{errors.w_id}</FormHelperText>}
                         </FormControl>
 
-                        <FormControl sx={styles.selectionBox} size="small">
+                        <FormControl sx={styles.selectionBox} size="small" error={!!errors.crop_id}>
                             <Typography sx={styles.selectionLabel}>SELECT CROP</Typography>
                             <Select 
                                 value={masterSelection.crop_id} 
@@ -325,13 +340,12 @@ const WholesalerStockMaster = () => {
                                     <MenuItem key={c.crop_id} value={c.crop_id} sx={{ py: 1 }}>
                                         <Stack direction="row" spacing={2} alignItems="center">
                                             <AuthorizedAvatar variant="rounded" path={c.photo} name={c.crop_name} size={30} />
-                                            <Typography sx={{ fontSize: '13px', fontWeight: '600' }}>
-                                                {c.crop_name} / {c.crop_id}
-                                            </Typography>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: '600' }}>{c.crop_name} / {c.crop_id}</Typography>
                                         </Stack>
                                     </MenuItem>
                                 ))}
                             </Select>
+                            {errors.crop_id && <FormHelperText sx={{textAlign: 'center'}}>{errors.crop_id}</FormHelperText>}
                         </FormControl>
                     </Box>
 
@@ -343,6 +357,7 @@ const WholesalerStockMaster = () => {
                                     <TableCell sx={styles.tableHeader}>UNIT</TableCell>
                                     <TableCell sx={styles.tableHeader}>PRICE/UNIT</TableCell>
                                     <TableCell sx={styles.tableHeader}>LOCATION</TableCell>
+                                    <TableCell sx={styles.tableHeader}>INTAKE</TableCell>
                                     <TableCell sx={styles.tableHeader}>EXPIRY</TableCell>
                                     <TableCell align="center">DEL</TableCell>
                                 </TableRow>
@@ -350,15 +365,37 @@ const WholesalerStockMaster = () => {
                             <TableBody>
                                 {formRows.map((row, index) => (
                                     <TableRow key={index}>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="number" value={row.quantity} onChange={(e) => handleInputChange(index, "quantity", e.target.value)} /></TableCell>
+                                        <TableCell sx={styles.tableCell}>
+                                            <TextField 
+                                                fullWidth size="small" type="number" value={row.quantity} 
+                                                error={!!errors[`item_${index}_quantity`]}
+                                                helperText={errors[`item_${index}_quantity`]}
+                                                onChange={(e) => handleInputChange(index, "quantity", e.target.value)} 
+                                            />
+                                        </TableCell>
                                         <TableCell sx={styles.tableCell}>
                                             <Select fullWidth size="small" value={row.unit} onChange={(e) => handleInputChange(index, "unit", e.target.value)}>
-                                                <MenuItem value="kg">KG</MenuItem><MenuItem value="TON">TON</MenuItem><MenuItem value="Q">QUINTAL</MenuItem>
+                                                <MenuItem value="kg">KG</MenuItem><MenuItem value="g">GRAM</MenuItem><MenuItem value="TON">TON</MenuItem><MenuItem value="Q">QUINTAL</MenuItem>
                                             </Select>
                                         </TableCell>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="number" value={row.price_per_unit} onChange={(e) => handleInputChange(index, "price_per_unit", e.target.value)} /></TableCell>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" value={row.stored_location} onChange={(e) => handleInputChange(index, "stored_location", e.target.value)} /></TableCell>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="date" value={row.expiry_date} onChange={(e) => handleInputChange(index, "expiry_date", e.target.value)} /></TableCell>
+                                        <TableCell sx={styles.tableCell}>
+                                            <TextField 
+                                                fullWidth size="small" type="number" value={row.price_per_unit} 
+                                                error={!!errors[`item_${index}_price_per_unit`]}
+                                                helperText={errors[`item_${index}_price_per_unit`]}
+                                                onChange={(e) => handleInputChange(index, "price_per_unit", e.target.value)} 
+                                            />
+                                        </TableCell>
+                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" value={row.warehouse_loc} onChange={(e) => handleInputChange(index, "warehouse_loc", e.target.value)} /></TableCell>
+                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="date" value={row.intake_date} onChange={(e) => handleInputChange(index, "intake_date", e.target.value)} /></TableCell>
+                                        <TableCell sx={styles.tableCell}>
+                                            <TextField 
+                                                fullWidth size="small" type="date" value={row.expiry_date} 
+                                                error={!!errors[`item_${index}_expiry_date`]}
+                                                helperText={errors[`item_${index}_expiry_date`]}
+                                                onChange={(e) => handleInputChange(index, "expiry_date", e.target.value)} 
+                                            />
+                                        </TableCell>
                                         <TableCell align="center">
                                             <IconButton color="error" onClick={() => handleRemoveRow(index)} disabled={formRows.length === 1}><DeleteIcon /></IconButton>
                                         </TableCell>
@@ -377,12 +414,11 @@ const WholesalerStockMaster = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* EDIT DIALOG */}
             <Dialog open={editOpen} onClose={() => !submitLoading && setEditOpen(false)} maxWidth="sm" fullWidth className="no-print">
                 <DialogTitle sx={styles.modalTitle}>UPDATE STOCK ASSOCIATIONS</DialogTitle>
                 <DialogContent dividers>
                     <Stack spacing={4} sx={{ p: 2 }}>
-                        <FormControl fullWidth size="small">
+                        <FormControl fullWidth size="small" error={!!errors.w_id}>
                             <Typography sx={styles.editFormLabel}>WHOLESALER ASSOCIATION</Typography>
                             <Select 
                                 value={editData.w_id || ""} 
@@ -407,9 +443,10 @@ const WholesalerStockMaster = () => {
                                     </MenuItem>
                                 ))}
                             </Select>
+                            {errors.w_id && <FormHelperText>{errors.w_id}</FormHelperText>}
                         </FormControl>
 
-                        <FormControl fullWidth size="small">
+                        <FormControl fullWidth size="small" error={!!errors.crop_id}>
                             <Typography sx={styles.editFormLabel}>CROP ASSOCIATION</Typography>
                             <Select 
                                 value={editData.crop_id || ""} 
@@ -434,6 +471,7 @@ const WholesalerStockMaster = () => {
                                     </MenuItem>
                                 ))}
                             </Select>
+                            {errors.crop_id && <FormHelperText>{errors.crop_id}</FormHelperText>}
                         </FormControl>
                     </Stack>
                 </DialogContent>
@@ -448,7 +486,6 @@ const WholesalerStockMaster = () => {
     );
 };
 
-// --- STYLES (CLEAN CONST STYLE) ---
 const styles = {
     container: { padding: "40px", backgroundColor: "#fff", minHeight: "100vh" },
     header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" },
@@ -466,7 +503,7 @@ const styles = {
     editBtn: { color: "#1976d2", backgroundColor: "#e3f2fd" },
     deleteBtn: { color: "#d32f2f", backgroundColor: "#ffebee" },
     modalTitle: { fontWeight: "900", color: "#1b5e20", textAlign: "center", textTransform: "uppercase" },
-    selectionHeaderArea: { display: "flex", justifyContent: "center", gap: "30px", mb: 4, p: 3, backgroundColor: "#fcfcfc", border: "1px solid #eee" },
+    selectionHeaderArea: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "30px", mb: 4, p: 3, backgroundColor: "#fcfcfc", border: "1px solid #eee" },
     selectionBox: { width: "350px" },
     selectionLabel: { fontWeight: "900", color: "#2e7d32", mb: 1, fontSize: "0.85rem", textAlign: "center" },
     editFormLabel: { fontWeight: "900", color: "#2e7d32", mb: 1, fontSize: "0.75rem", textTransform: "uppercase" },
@@ -476,7 +513,6 @@ const styles = {
     saveBtn: { backgroundColor: "#2e7d32", fontWeight: "900", borderRadius: '2px' },
     printBtn: { color: "#2e7d32", fontWeight: "900", border: "1px solid #2e7d32" },
     dialogActions: { p: 3, justifyContent: "space-between" },
-    
     printContainer: { width: '100%', padding: '0px' },
     farmerPrintHeader: { 
         display: 'flex', 

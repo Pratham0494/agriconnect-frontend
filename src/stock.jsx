@@ -20,7 +20,6 @@ import PrintIcon from "@mui/icons-material/Print";
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery";
 
-// --- CLEAN CONST STYLE CSS ---
 const styles = {
     container: { padding: "40px", backgroundColor: "#ffffff", minHeight: "100vh" },
     header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" },
@@ -31,7 +30,6 @@ const styles = {
     addButton: { backgroundColor: "#2e7d32", color: "#ffffff", fontWeight: "800", height: "40px", px: 4 },
     gridBox: { boxShadow: "0 4px 20px rgba(0,0,0,0.08)", borderRadius: "4px" },
     dataGrid: { border: "none", "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f9f9f9", fontWeight: "900" } },
-    cellCenter: { display: 'flex', justifyContent: 'center', width: '100%' },
     actionBox: { display: "flex", gap: "4px" },
     editBtn: { color: "#1976d2", "&:hover": { backgroundColor: "#e3f2fd" } },
     deleteBtn: { color: "#d32f2f", "&:hover": { backgroundColor: "#ffebee" } },
@@ -39,10 +37,10 @@ const styles = {
     selectInput: { minWidth: "160px" },
     totalBox: { p: 2, backgroundColor: "#e8f5e9", borderRadius: "4px", textAlign: "right", color: "#1b5e20", border: "1px dashed #2e7d32" },
     dialogActions: { padding: "24px", justifyContent: "flex-end", gap: "12px" },
-    saveBtn: { backgroundColor: "#2e7d32", color: "#ffffff", fontWeight: "900", minWidth: "180px" }
+    saveBtn: { backgroundColor: "#2e7d32", color: "#ffffff", fontWeight: "900", minWidth: "180px" },
+    errorText: { color: "#d32f2f", fontSize: "0.75rem", marginTop: "4px", fontWeight: "500" }
 };
 
-// --- AGGRESSIVE PRINT CONFIGURATION ---
 const printStyles = {
     "@media print": {
         "@page": { size: "A4 landscape", margin: "5mm" },
@@ -68,35 +66,6 @@ const formatRegisterTime = (val) => {
     return isNaN(date.getTime()) ? "-" : `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
 };
 
-const AuthorizedAvatar = ({ path, name, variant = "rounded", size = 44 }) => {
-    const [imgSrc, setImgSrc] = useState(null);
-    const [fetching, setFetching] = useState(false);
-
-    useEffect(() => {
-        if (!path || typeof path !== 'string' || path.trim() === "") {
-            setImgSrc(null);
-            return;
-        }
-        const fetchSecureImage = async () => {
-            setFetching(true);
-            try {
-                const response = await axiosInstance.get(path, { responseType: 'blob' });
-                const objectUrl = URL.createObjectURL(response.data);
-                setImgSrc(objectUrl);
-            } catch (err) { setImgSrc(null); } 
-            finally { setFetching(false); }
-        };
-        fetchSecureImage();
-        return () => { if (imgSrc) URL.revokeObjectURL(imgSrc); };
-    }, [path]);
-
-    return (
-        <Avatar src={imgSrc} variant={variant} sx={{ width: size, height: size, fontSize: '0.8rem', borderRadius: variant === "rounded" ? "4px" : "50%" }}>
-            {fetching ? <CircularProgress size={16} color="inherit" /> : name?.charAt(0)}
-        </Avatar>
-    );
-};
-
 function StockList() {
     const [rows, setRows] = useState([]);
     const [rowCount, setRowCount] = useState(0);
@@ -106,9 +75,8 @@ function StockList() {
     const [refresh, setRefresh] = useState(0);
     const [searchText, setSearchText] = useState("");
     const [selectedId, setSelectedId] = useState(null);
-    
-    // BACKEND SYNC: Using StockMaster to link Farmer/Crop
     const [stockMasters, setStockMasters] = useState([]);
+    const [errors, setErrors] = useState({});
 
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
     const [sortModel, setSortModel] = useState([]);
@@ -125,7 +93,6 @@ function StockList() {
 
     const loadDependencies = useCallback(async () => {
         try {
-            // Strictly fetching from StockMaster as per backend
             const response = await axiosInstance.get('farmer-api/stock-master/');
             setStockMasters(response.data.results || response.data || []);
         } catch (err) { console.error("Dependency Error:", err); }
@@ -144,7 +111,7 @@ function StockList() {
     useEffect(() => { loadData(); loadDependencies(); }, [loadData, loadDependencies]);
 
     const [formData, setFormData] = useState({
-        stock_id: "", // Single FK to StockMaster
+        stock_id: "", 
         harvested_date: new Date().toISOString().split('T')[0],
         hectares: "",
         quantity: "",
@@ -154,25 +121,66 @@ function StockList() {
         stored_location: ""
     });
 
+    const validate = () => {
+        const newErrors = {};
+        const today = new Date().toISOString().split('T')[0];
+
+        if (!formData.stock_id) newErrors.stock_id = "Please select a Farmer and Crop";
+        if (!formData.harvested_date) newErrors.harvested_date = "Harvest date is required";
+        if (formData.harvested_date > today) newErrors.harvested_date = "Date cannot be in the future";
+        
+        if (!formData.quantity || formData.quantity <= 0) {
+            newErrors.quantity = "Enter a valid quantity";
+        } else if (formData.quantity >= 1000000) {
+            newErrors.quantity = "Quantity limit exceeded";
+        }
+
+        if (!formData.unit) newErrors.unit = "Unit is required";
+        
+        if (!formData.price_per_unit || formData.price_per_unit <= 0) {
+            newErrors.price_per_unit = "Enter price per unit";
+        } else if (formData.price_per_unit >= 10000000000) {
+            newErrors.price_per_unit = "Price limit exceeded";
+        }
+
+        if (!formData.expiry_date) {
+            newErrors.expiry_date = "Expiry date is required";
+        } else if (formData.expiry_date <= formData.harvested_date) {
+            newErrors.expiry_date = "Expiry must be after harvest date";
+        }
+
+        if (formData.hectares && (formData.hectares <= 0 || formData.hectares >= 1000000)) {
+            newErrors.hectares = "Enter a valid hectare value";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleFieldChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
+        if (errors[field]) {
+            setErrors({ ...errors, [field]: null });
+        }
     };
 
     const handleSave = async () => {
+        if (!validate()) return;
+        
         setSubmitLoading(true);
         try {
             if (selectedId) {
-                // Updating specific detail
                 await axiosInstance.patch(`farmer-api/stock-detail/${selectedId}/`, formData);
             } else {
-                // Creating via the specific detail table viewset 
                 await axiosInstance.post('farmer-api/stock-detail/', formData);
             }
             setOpen(false);
             setRefresh(p => p + 1);
             resetForm();
         } catch (err) { 
-            console.error("Save Error:", err.response?.data);
+            if (err.response?.data) {
+                setErrors(err.response.data);
+            }
         } finally { setSubmitLoading(false); }
     };
 
@@ -197,6 +205,7 @@ function StockList() {
             stored_location: "" 
         });
         setSelectedId(null);
+        setErrors({});
     };
 
     const columns = useMemo(() => [
@@ -280,14 +289,14 @@ function StockList() {
                 <DialogTitle sx={styles.modalTitle}>{selectedId ? "EDIT STOCK ENTRY" : "NEW STOCK REGISTRATION"}</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                        
-                        {/* THE SINGLE BACKEND-STRICT DROPDOWN: FARMER / CROP */}
                         <Grid item xs={12} md={6}>
                             <TextField 
                                 select fullWidth label="Farmer / His Crop *" size="small" 
                                 disabled={!!selectedId} value={formData.stock_id} 
                                 onChange={(e) => handleFieldChange("stock_id", e.target.value)}
                                 sx={styles.selectInput}
+                                error={!!errors.stock_id}
+                                helperText={errors.stock_id && <span style={styles.errorText}>{errors.stock_id}</span>}
                             >
                                 {stockMasters.map(m => (
                                     <MenuItem key={m.stock_id} value={m.stock_id}>
@@ -298,7 +307,12 @@ function StockList() {
                         </Grid>
 
                         <Grid item xs={12} md={3}>
-                            <TextField select fullWidth label="Unit *" size="small" value={formData.unit} onChange={(e) => handleFieldChange("unit", e.target.value)}>
+                            <TextField 
+                                select fullWidth label="Unit *" size="small" value={formData.unit} 
+                                onChange={(e) => handleFieldChange("unit", e.target.value)}
+                                error={!!errors.unit}
+                                helperText={errors.unit && <span style={styles.errorText}>{errors.unit}</span>}
+                            >
                                 <MenuItem value="kg">Kilograms (kg)</MenuItem>
                                 <MenuItem value="g">Grams (g)</MenuItem>
                                 <MenuItem value="TON">Metric Tons (TON)</MenuItem>
@@ -306,17 +320,59 @@ function StockList() {
                             </TextField>
                         </Grid>
 
-                        <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Quantity *" size="small" value={formData.quantity} onChange={(e) => handleFieldChange("quantity", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField 
+                                fullWidth type="number" label="Quantity *" size="small" value={formData.quantity} 
+                                onChange={(e) => handleFieldChange("quantity", e.target.value)} 
+                                error={!!errors.quantity}
+                                helperText={errors.quantity && <span style={styles.errorText}>{errors.quantity}</span>}
+                            />
+                        </Grid>
                         
-                        <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Price per Unit *" size="small" value={formData.price_per_unit} onChange={(e) => handleFieldChange("price_per_unit", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField 
+                                fullWidth type="number" label="Price per Unit *" size="small" value={formData.price_per_unit} 
+                                onChange={(e) => handleFieldChange("price_per_unit", e.target.value)} 
+                                error={!!errors.price_per_unit}
+                                helperText={errors.price_per_unit && <span style={styles.errorText}>{errors.price_per_unit}</span>}
+                            />
+                        </Grid>
                         
-                        <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Hectares" size="small" value={formData.hectares} onChange={(e) => handleFieldChange("hectares", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField 
+                                fullWidth type="number" label="Hectares" size="small" value={formData.hectares} 
+                                onChange={(e) => handleFieldChange("hectares", e.target.value)} 
+                                error={!!errors.hectares}
+                                helperText={errors.hectares && <span style={styles.errorText}>{errors.hectares}</span>}
+                            />
+                        </Grid>
                         
-                        <Grid item xs={12} md={3}><TextField fullWidth type="date" label="Harvest Date" size="small" InputLabelProps={{ shrink: true }} value={formData.harvested_date} onChange={(e) => handleFieldChange("harvested_date", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField 
+                                fullWidth type="date" label="Harvest Date" size="small" InputLabelProps={{ shrink: true }} 
+                                value={formData.harvested_date} onChange={(e) => handleFieldChange("harvested_date", e.target.value)} 
+                                error={!!errors.harvested_date}
+                                helperText={errors.harvested_date && <span style={styles.errorText}>{errors.harvested_date}</span>}
+                            />
+                        </Grid>
                         
-                        <Grid item xs={12} md={3}><TextField fullWidth type="date" label="Expiry Date" size="small" InputLabelProps={{ shrink: true }} value={formData.expiry_date || ""} onChange={(e) => handleFieldChange("expiry_date", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField 
+                                fullWidth type="date" label="Expiry Date" size="small" InputLabelProps={{ shrink: true }} 
+                                value={formData.expiry_date || ""} onChange={(e) => handleFieldChange("expiry_date", e.target.value)} 
+                                error={!!errors.expiry_date}
+                                helperText={errors.expiry_date && <span style={styles.errorText}>{errors.expiry_date}</span>}
+                            />
+                        </Grid>
                         
-                        <Grid item xs={12}><TextField fullWidth label="Storage/Warehouse Location" size="small" value={formData.stored_location || ""} onChange={(e) => handleFieldChange("stored_location", e.target.value)} /></Grid>
+                        <Grid item xs={12}>
+                            <TextField 
+                                fullWidth label="Storage/Warehouse Location" size="small" value={formData.stored_location || ""} 
+                                onChange={(e) => handleFieldChange("stored_location", e.target.value)} 
+                                error={!!errors.stored_location}
+                                helperText={errors.stored_location && <span style={styles.errorText}>{errors.stored_location}</span>}
+                            />
+                        </Grid>
                         
                         {formData.quantity && formData.price_per_unit && (
                             <Grid item xs={12}>

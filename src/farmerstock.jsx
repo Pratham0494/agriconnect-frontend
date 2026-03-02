@@ -9,7 +9,7 @@ import {
     Box, TextField, Button, Dialog, DialogTitle, DialogContent,
     DialogActions, MenuItem, IconButton, Typography, Select,
     FormControl, InputLabel, Avatar, CircularProgress, InputAdornment,
-    GlobalStyles, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
+    GlobalStyles, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, FormHelperText
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -97,6 +97,9 @@ const FarmerStock = () => {
     const [farmers, setFarmers] = useState([]);
     const [crops, setCrops] = useState([]);
 
+    // Validation State
+    const [errors, setErrors] = useState({});
+
     const [masterSelection, setMasterSelection] = useState({ farmer_id: "", crop_id: "" });
 
     const [formRows, setFormRows] = useState([
@@ -172,17 +175,53 @@ const FarmerStock = () => {
     };
 
     const handleRemoveRow = (index) => {
-        if (formRows.length > 1) setFormRows(formRows.filter((_, i) => i !== index));
+        if (formRows.length > 1) {
+            setFormRows(formRows.filter((_, i) => i !== index));
+            // Also clean up errors for that row if they exist
+            const newErrors = { ...errors };
+            delete newErrors[`row_${index}`];
+            setErrors(newErrors);
+        }
     };
 
     const handleInputChange = (index, field, value) => {
         const updatedRows = [...formRows];
         updatedRows[index][field] = value;
         setFormRows(updatedRows);
+        // Clear error when user types
+        if (errors[`row_${index}`]?.[field]) {
+            const newErrors = { ...errors };
+            delete newErrors[`row_${index}`][field];
+            setErrors(newErrors);
+        }
+    };
+
+    const validateForm = () => {
+        let tempErrors = {};
+        if (!masterSelection.farmer_id) tempErrors.farmer_id = "Farmer selection is required.";
+        if (!masterSelection.crop_id) tempErrors.crop_id = "Crop selection is required.";
+
+        formRows.forEach((row, index) => {
+            let rowErrors = {};
+            if (!row.harvested_date) rowErrors.harvested_date = "Required";
+            if (!row.quantity || parseFloat(row.quantity) <= 0) rowErrors.quantity = "Invalid Qty";
+            if (!row.price_per_unit || parseFloat(row.price_per_unit) <= 0) rowErrors.price_per_unit = "Invalid Price";
+            
+            if (row.expiry_date && row.expiry_date < row.harvested_date) {
+                rowErrors.expiry_date = "After Harvest Only";
+            }
+
+            if (Object.keys(rowErrors).length > 0) {
+                tempErrors[`row_${index}`] = rowErrors;
+            }
+        });
+
+        setErrors(tempErrors);
+        return Object.keys(tempErrors).length === 0;
     };
 
     const handleSubmitRegistration = async () => {
-        if (!masterSelection.farmer_id || !masterSelection.crop_id) return;
+        if (!validateForm()) return;
         setSubmitLoading(true);
         try {
             const payload = {
@@ -203,7 +242,9 @@ const FarmerStock = () => {
             setRefresh(p => p + 1);
             setMasterSelection({ farmer_id: "", crop_id: "" });
             setFormRows([{ unit: "kg", hectares: "", quantity: "", price_per_unit: "", stored_location: "", harvested_date: new Date().toISOString().split('T')[0], expiry_date: "" }]);
+            setErrors({});
         } catch (err) { 
+            if (err.response?.data) setErrors(err.response.data);
             console.error("Submission Error:", err.response?.data); 
         } finally { setSubmitLoading(false); }
     };
@@ -346,7 +387,7 @@ const FarmerStock = () => {
                     <Box sx={styles.selectionHeaderArea}>
                         <Box sx={styles.selectionBox}>
                             <Typography sx={styles.selectionLabel}>FARMER SELECTION</Typography>
-                            <FormControl fullWidth size="small">
+                            <FormControl fullWidth size="small" error={!!errors.farmer_id}>
                                 <Select 
                                     value={masterSelection.farmer_id} 
                                     onChange={(e) => setMasterSelection({...masterSelection, farmer_id: e.target.value})}
@@ -366,12 +407,13 @@ const FarmerStock = () => {
                                         </MenuItem>
                                     ))}
                                 </Select>
+                                {errors.farmer_id && <FormHelperText>{errors.farmer_id}</FormHelperText>}
                             </FormControl>
                         </Box>
 
                         <Box sx={styles.selectionBox}>
                             <Typography sx={styles.selectionLabel}>CROP SELECTION</Typography>
-                            <FormControl fullWidth size="small">
+                            <FormControl fullWidth size="small" error={!!errors.crop_id}>
                                 <Select 
                                     value={masterSelection.crop_id} 
                                     onChange={(e) => setMasterSelection({...masterSelection, crop_id: e.target.value})}
@@ -391,6 +433,7 @@ const FarmerStock = () => {
                                         </MenuItem>
                                     ))}
                                 </Select>
+                                {errors.crop_id && <FormHelperText>{errors.crop_id}</FormHelperText>}
                             </FormControl>
                         </Box>
                     </Box>
@@ -410,31 +453,72 @@ const FarmerStock = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {formRows.map((row, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell sx={styles.tableCell}>
-                                            <TextField fullWidth size="small" type="date" value={row.harvested_date} onChange={(e) => handleInputChange(index, "harvested_date", e.target.value)} />
-                                        </TableCell>
-                                        <TableCell sx={styles.tableCell}>
-                                            <TextField fullWidth size="small" type="date" value={row.expiry_date} onChange={(e) => handleInputChange(index, "expiry_date", e.target.value)} />
-                                        </TableCell>
-                                        <TableCell sx={styles.tableCell}>
-                                            <Select fullWidth size="small" value={row.unit} onChange={(e) => handleInputChange(index, "unit", e.target.value)}>
-                                                <MenuItem value="kg">KG</MenuItem>
-                                                <MenuItem value="g">GRAM</MenuItem>
-                                                <MenuItem value="TON">TON</MenuItem>
-                                                <MenuItem value="Q">QUINTAL</MenuItem>
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="number" value={row.hectares} onChange={(e) => handleInputChange(index, "hectares", e.target.value)} /></TableCell>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="number" value={row.quantity} onChange={(e) => handleInputChange(index, "quantity", e.target.value)} /></TableCell>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="number" value={row.price_per_unit} onChange={(e) => handleInputChange(index, "price_per_unit", e.target.value)} /></TableCell>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" value={row.stored_location} onChange={(e) => handleInputChange(index, "stored_location", e.target.value)} /></TableCell>
-                                        <TableCell align="center">
-                                            <IconButton color="error" onClick={() => handleRemoveRow(index)} disabled={formRows.length === 1}><DeleteIcon fontSize="small" /></IconButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {formRows.map((row, index) => {
+                                    const rowErr = errors[`row_${index}`] || {};
+                                    return (
+                                        <TableRow key={index}>
+                                            <TableCell sx={styles.tableCell}>
+                                                <TextField 
+                                                    fullWidth size="small" type="date" value={row.harvested_date} 
+                                                    error={!!rowErr.harvested_date}
+                                                    helperText={rowErr.harvested_date}
+                                                    onChange={(e) => handleInputChange(index, "harvested_date", e.target.value)} 
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={styles.tableCell}>
+                                                <TextField 
+                                                    fullWidth size="small" type="date" value={row.expiry_date} 
+                                                    error={!!rowErr.expiry_date}
+                                                    helperText={rowErr.expiry_date}
+                                                    onChange={(e) => handleInputChange(index, "expiry_date", e.target.value)} 
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={styles.tableCell}>
+                                                <Select fullWidth size="small" value={row.unit} onChange={(e) => handleInputChange(index, "unit", e.target.value)}>
+                                                    <MenuItem value="kg">KG</MenuItem>
+                                                    <MenuItem value="g">GRAM</MenuItem>
+                                                    <MenuItem value="TON">TON</MenuItem>
+                                                    <MenuItem value="Q">QUINTAL</MenuItem>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell sx={styles.tableCell}>
+                                                <TextField 
+                                                    fullWidth size="small" type="number" value={row.hectares} 
+                                                    error={!!rowErr.hectares}
+                                                    helperText={rowErr.hectares}
+                                                    onChange={(e) => handleInputChange(index, "hectares", e.target.value)} 
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={styles.tableCell}>
+                                                <TextField 
+                                                    fullWidth size="small" type="number" value={row.quantity} 
+                                                    error={!!rowErr.quantity}
+                                                    helperText={rowErr.quantity}
+                                                    onChange={(e) => handleInputChange(index, "quantity", e.target.value)} 
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={styles.tableCell}>
+                                                <TextField 
+                                                    fullWidth size="small" type="number" value={row.price_per_unit} 
+                                                    error={!!rowErr.price_per_unit}
+                                                    helperText={rowErr.price_per_unit}
+                                                    onChange={(e) => handleInputChange(index, "price_per_unit", e.target.value)} 
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={styles.tableCell}>
+                                                <TextField 
+                                                    fullWidth size="small" value={row.stored_location} 
+                                                    error={!!rowErr.stored_location}
+                                                    helperText={rowErr.stored_location}
+                                                    onChange={(e) => handleInputChange(index, "stored_location", e.target.value)} 
+                                                />
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <IconButton color="error" onClick={() => handleRemoveRow(index)} disabled={formRows.length === 1}><DeleteIcon fontSize="small" /></IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </TableContainer>
@@ -448,7 +532,6 @@ const FarmerStock = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* EDIT MODAL */}
             <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="xs" fullWidth className="no-print">
                 <DialogTitle sx={styles.modalTitle}>EDIT MASTER ASSOCIATION</DialogTitle>
                 <DialogContent dividers>
@@ -523,7 +606,7 @@ const styles = {
     selectionBox: { width: "350px" },
     selectionLabel: { fontWeight: "900", color: "#2e7d32", mb: 1, fontSize: "0.85rem", textAlign: "center" },
     tableHeader: { fontWeight: "900", color: "#555", fontSize: "11px", textTransform: "uppercase" },
-    tableCell: { padding: "6px" },
+    tableCell: { padding: "6px", verticalAlign: "top" },
     addRowBtn: { mt: 2, color: "#2e7d32", fontWeight: "900" },
     saveBtn: { backgroundColor: "#2e7d32", fontWeight: "900" },
     printBtn: { color: "#2e7d32", fontWeight: "900", border: "1px solid #2e7d32" },

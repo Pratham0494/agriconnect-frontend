@@ -14,9 +14,9 @@ import StockList from './stock.jsx';
 import WholesalerList from './WholesalerList.jsx';
 import FarmerStock from './farmerstock.jsx'; 
 
-// IMPORT THE NEW WHOLESALER STOCK MASTER PAGE
+
 import WholesalerStockMaster from './WholesalerStockMaster.jsx'; 
-// NEW: Import the Wholesaler Stock Detail component
+
 import WholesalerStockDetail from './WholesalerStockDetail.jsx'; 
 
 const ProtectedRoute = ({ children }) => {
@@ -68,10 +68,10 @@ function App() {
             
             <Route path="wholesalers" element={<WholesalerList />} />
             
-            {/* WHOLESALER STOCK ROUTES */}
+            
             <Route path="wholesaler-stock" element={<WholesalerStockMaster />} />
             
-            {/* NEW: Added Wholesaler Stock Detail route */}
+            
             <Route path="wholesaler-stock-detail" element={<WholesalerStockDetail />} />
             
           </Route>

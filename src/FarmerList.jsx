@@ -22,7 +22,6 @@ import PrintIcon from "@mui/icons-material/Print";
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery";
 
-// Clean Const Style CSS
 const styles = {
     container: { padding: "40px", backgroundColor: "#ffffff", minHeight: "100vh" },
     header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" },
@@ -68,7 +67,7 @@ const styles = {
     printOverrides: {
         "@media print": {
             "@page": { 
-                size: "landscape", // Force landscape for wide tables
+                size: "landscape", 
                 margin: "5mm" 
             },
             "body": { 
@@ -88,7 +87,7 @@ const styles = {
                 padding: "0 !important",
                 boxShadow: "none !important",
                 display: "block !important",
-                zoom: "85%" // Slightly zoom out to ensure EKYF and ID fit
+                zoom: "85%" 
             },
             ".no-print, .MuiDataGrid-footerContainer, .MuiDataGrid-columnSeparator, .MuiDataGrid-pagination, .MuiDataGrid-scrollbar": { 
                 display: "none !important" 
@@ -210,6 +209,7 @@ function FarmerList() {
     
     const [selectedId, setSelectedId] = useState(null);
     const [preview, setPreview] = useState(null);
+    const [errors, setErrors] = useState({});
 
     const [formData, setFormData] = useState({
         user_name: "", password: "", confirm_password: "", first_name: "", 
@@ -263,9 +263,46 @@ function FarmerList() {
         window.print();
     };
 
+    // --- Strict Backend Validations Based on Models.py ---
+    const validateForm = () => {
+        let tempErrors = {};
+        const usernameRegex = /^[\w.@+-]+$/;
+        const ekyfRegex = /^[a-zA-Z]{2}[0-9]{12}$/;
+        const phoneRegex = /^[0-9]{10,11}$/;
+        const aadharRegex = /^[2-9]{1}[0-9]{11}$/;
+
+        if (!formData.user_name) tempErrors.user_name = "Required.";
+        else if (formData.user_name.length > 150) tempErrors.user_name = "Max 150 chars.";
+        else if (!usernameRegex.test(formData.user_name)) tempErrors.user_name = "Letters, digits and @/./+/-/_ only.";
+
+        if (!selectedId && !formData.password) tempErrors.password = "Required.";
+        if (formData.password && formData.password !== formData.confirm_password) {
+            tempErrors.confirm_password = "Passwords do not match.";
+        }
+
+        if (!formData.first_name) tempErrors.first_name = "Required.";
+        else if (formData.first_name.length > 50) tempErrors.first_name = "Max 50 chars.";
+
+        if (formData.last_name && formData.last_name.length > 50) tempErrors.last_name = "Max 50 chars.";
+
+        if (!formData.f_phone) tempErrors.f_phone = "Required.";
+        else if (!phoneRegex.test(formData.f_phone)) tempErrors.f_phone = "Enter a valid 10 or 11 digit Phone number.";
+
+        if (!formData.aadhar_no) tempErrors.aadhar_no = "Required.";
+        else if (!aadharRegex.test(formData.aadhar_no)) tempErrors.aadhar_no = "Invalid Adhaar card Number. (Starts with 2-9, 12 digits)";
+
+        if (!formData.ekyf_id) tempErrors.ekyf_id = "Required.";
+        else if (!ekyfRegex.test(formData.ekyf_id)) tempErrors.ekyf_id = "Enter Valid 14 digit ekyf ID";
+
+        if (!formData.state) tempErrors.state = "Required.";
+        if (!formData.sub_district) tempErrors.sub_district = "Required.";
+
+        setErrors(tempErrors);
+        return Object.keys(tempErrors).length === 0;
+    };
+
     const handleSubmit = async () => {
-        if (!selectedId && (!formData.user_name || !formData.password)) return;
-        if (formData.password !== formData.confirm_password) return;
+        if (!validateForm()) return;
         setSubmitLoading(true);
         
         const uploadData = new FormData();
@@ -295,6 +332,7 @@ function FarmerList() {
                 resetForm();
             }
         } catch (err) { 
+            if (err.response?.data) setErrors(err.response.data);
             console.error("Submit Error:", err); 
         } finally { 
             setSubmitLoading(false); 
@@ -319,6 +357,7 @@ function FarmerList() {
         });
         setPreview(null);
         setSelectedId(null);
+        setErrors({});
     };
 
     const columns = useMemo(() => [
@@ -455,7 +494,7 @@ function FarmerList() {
                     pageSizeOptions={[10, 25, 50, 100]} 
                     loading={loading} 
                     autoHeight 
-                    disableVirtualization // IMPORTANT: Renders all columns for the print engine
+                    disableVirtualization 
                     sx={styles.dataGrid}
                     slots={{
                         toolbar: () => (
@@ -490,25 +529,66 @@ function FarmerList() {
                         </Grid>
                         <Grid item xs={12} md={9}>
                             <Grid container spacing={2}>
-                                <Grid item xs={12}><TextField fullWidth label="Username *" size="small" value={formData.user_name} onChange={e => setFormData({...formData, user_name: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField fullWidth type="password" label="Password *" size="small" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField fullWidth type="password" label="Confirm Password *" size="small" value={formData.confirm_password} onChange={e => setFormData({...formData, confirm_password: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField fullWidth label="First Name *" size="small" value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField fullWidth label="Last Name" size="small" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField fullWidth label="Phone *" size="small" value={formData.f_phone} onChange={e => setFormData({...formData, f_phone: e.target.value})} /></Grid>
-                                <Grid item xs={6}><TextField fullWidth label="Aadhar No *" size="small" value={formData.aadhar_no} onChange={e => setFormData({...formData, aadhar_no: e.target.value})} /></Grid>
+                                <Grid item xs={12}>
+                                    <TextField fullWidth label="Username *" size="small" 
+                                        error={!!errors.user_name} helperText={errors.user_name}
+                                        value={formData.user_name} onChange={e => setFormData({...formData, user_name: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField fullWidth type="password" label="Password *" size="small" 
+                                        error={!!errors.password} helperText={errors.password}
+                                        value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField fullWidth type="password" label="Confirm Password *" size="small" 
+                                        error={!!errors.confirm_password} helperText={errors.confirm_password}
+                                        value={formData.confirm_password} onChange={e => setFormData({...formData, confirm_password: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField fullWidth label="First Name *" size="small" 
+                                        error={!!errors.first_name} helperText={errors.first_name}
+                                        value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField fullWidth label="Last Name" size="small" 
+                                        error={!!errors.last_name} helperText={errors.last_name}
+                                        value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField fullWidth label="Phone *" size="small" 
+                                        error={!!errors.f_phone} helperText={errors.f_phone}
+                                        value={formData.f_phone} onChange={e => setFormData({...formData, f_phone: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField fullWidth label="Aadhar No *" size="small" 
+                                        error={!!errors.aadhar_no} helperText={errors.aadhar_no}
+                                        value={formData.aadhar_no} onChange={e => setFormData({...formData, aadhar_no: e.target.value})} />
+                                </Grid>
                                 <Grid item xs={4}>
-                                    <FormControl fullWidth size="small">
+                                    <FormControl fullWidth size="small" error={!!errors.gender}>
                                         <InputLabel>Gender</InputLabel>
                                         <Select label="Gender" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
                                             <MenuItem value="M">MALE</MenuItem>
                                             <MenuItem value="F">FEMALE</MenuItem>
                                         </Select>
+                                        {errors.gender && <Typography variant="caption" color="error">{errors.gender}</Typography>}
                                     </FormControl>
                                 </Grid>
-                                <Grid item xs={4}><TextField fullWidth label="State" size="small" value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} /></Grid>
-                                <Grid item xs={4}><TextField fullWidth label="Sub-District" size="small" value={formData.sub_district} onChange={e => setFormData({...formData, sub_district: e.target.value})} /></Grid>
-                                <Grid item xs={12}><TextField fullWidth label="EKYF ID" size="small" value={formData.ekyf_id} onChange={e => setFormData({...formData, ekyf_id: e.target.value})} /></Grid>
+                                <Grid item xs={4}>
+                                    <TextField fullWidth label="State *" size="small" 
+                                        error={!!errors.state} helperText={errors.state}
+                                        value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <TextField fullWidth label="Sub-District *" size="small" 
+                                        error={!!errors.sub_district} helperText={errors.sub_district}
+                                        value={formData.sub_district} onChange={e => setFormData({...formData, sub_district: e.target.value})} />
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <TextField fullWidth label="EKYF ID *" size="small" 
+                                        error={!!errors.ekyf_id} helperText={errors.ekyf_id}
+                                        value={formData.ekyf_id} onChange={e => setFormData({...formData, ekyf_id: e.target.value})} />
+                                </Grid>
                                 <Grid item xs={12}><TextField fullWidth multiline rows={2} label="Address" size="small" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></Grid>
                             </Grid>
                         </Grid>
