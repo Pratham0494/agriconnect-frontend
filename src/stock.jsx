@@ -57,21 +57,10 @@ const printStyles = {
     }
 };
 
-const STRICT_STRING_OPS = getGridStringOperators().filter((op) => 
-    ['equals'].includes(op.value)
-);
-
-const BACKEND_STRING_OPS = getGridStringOperators().filter((op) => 
-    ['contains', 'equals', 'startsWith', 'endsWith'].includes(op.value)
-);
-
-const BACKEND_NUMERIC_OPS = getGridNumericOperators().filter((op) => 
-    ['=', '>', '>=', '<', '<='].includes(op.value)
-);
-
-const BACKEND_DATE_OPS = getGridDateOperators().filter((op) => 
-    ['is', 'after', 'before'].includes(op.value)
-);
+const STRICT_STRING_OPS = getGridStringOperators().filter((op) => ['equals'].includes(op.value));
+const BACKEND_STRING_OPS = getGridStringOperators().filter((op) => ['contains', 'equals', 'startsWith', 'endsWith'].includes(op.value));
+const BACKEND_NUMERIC_OPS = getGridNumericOperators().filter((op) => ['=', '>', '>=', '<', '<='].includes(op.value));
+const BACKEND_DATE_OPS = getGridDateOperators().filter((op) => ['is', 'after', 'before'].includes(op.value));
 
 const formatRegisterTime = (val) => {
     if (!val) return "-";
@@ -117,8 +106,9 @@ function StockList() {
     const [refresh, setRefresh] = useState(0);
     const [searchText, setSearchText] = useState("");
     const [selectedId, setSelectedId] = useState(null);
-    const [farmers, setFarmers] = useState([]);
-    const [crops, setCrops] = useState([]);
+    
+    // BACKEND SYNC: Using StockMaster to link Farmer/Crop
+    const [stockMasters, setStockMasters] = useState([]);
 
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
     const [sortModel, setSortModel] = useState([]);
@@ -135,12 +125,9 @@ function StockList() {
 
     const loadDependencies = useCallback(async () => {
         try {
-            const [fRes, cRes] = await Promise.all([
-                axiosInstance.get('farmer-api/farmer/'),
-                axiosInstance.get('admin-api/crop/')
-            ]);
-            setFarmers(fRes.data.results || fRes.data || []);
-            setCrops(cRes.data.results || cRes.data || []);
+            // Strictly fetching from StockMaster as per backend
+            const response = await axiosInstance.get('farmer-api/stock-master/');
+            setStockMasters(response.data.results || response.data || []);
         } catch (err) { console.error("Dependency Error:", err); }
     }, []);
 
@@ -157,47 +144,29 @@ function StockList() {
     useEffect(() => { loadData(); loadDependencies(); }, [loadData, loadDependencies]);
 
     const [formData, setFormData] = useState({
-        farmer_id: "",
-        crop_id: "",
-        items: [{
-            harvested_date: new Date().toISOString().split('T')[0],
-            hectares: "",
-            quantity: "",
-            unit: "kg",
-            price_per_unit: "",
-            expiry_date: "",
-            stored_location: ""
-        }]
+        stock_id: "", // Single FK to StockMaster
+        harvested_date: new Date().toISOString().split('T')[0],
+        hectares: "",
+        quantity: "",
+        unit: "kg",
+        price_per_unit: "",
+        expiry_date: "",
+        stored_location: ""
     });
 
-    const handleItemChange = (field, value) => {
-        const updatedItems = [...formData.items];
-        updatedItems[0][field] = value;
-        setFormData({ ...formData, items: updatedItems });
+    const handleFieldChange = (field, value) => {
+        setFormData({ ...formData, [field]: value });
     };
 
     const handleSave = async () => {
         setSubmitLoading(true);
         try {
-            const cleanItem = {
-                harvested_date: formData.items[0].harvested_date,
-                hectares: formData.items[0].hectares || null,
-                quantity: formData.items[0].quantity,
-                unit: formData.items[0].unit, 
-                price_per_unit: formData.items[0].price_per_unit,
-                expiry_date: formData.items[0].expiry_date || null,
-                stored_location: formData.items[0].stored_location || ""
-            };
-
             if (selectedId) {
-                await axiosInstance.patch(`farmer-api/stock-detail/${selectedId}/`, cleanItem);
+                // Updating specific detail
+                await axiosInstance.patch(`farmer-api/stock-detail/${selectedId}/`, formData);
             } else {
-                const masterPayload = {
-                    farmer_id: formData.farmer_id,
-                    crop_id: formData.crop_id,
-                    items: [cleanItem]
-                };
-                await axiosInstance.post('farmer-api/stock-master/', masterPayload);
+                // Creating via the specific detail table viewset 
+                await axiosInstance.post('farmer-api/stock-detail/', formData);
             }
             setOpen(false);
             setRefresh(p => p + 1);
@@ -218,44 +187,20 @@ function StockList() {
 
     const resetForm = () => {
         setFormData({
-            farmer_id: "", crop_id: "",
-            items: [{ harvested_date: new Date().toISOString().split('T')[0], hectares: "", quantity: "", unit: "kg", price_per_unit: "", expiry_date: "", stored_location: "" }]
+            stock_id: "", 
+            harvested_date: new Date().toISOString().split('T')[0], 
+            hectares: "", 
+            quantity: "", 
+            unit: "kg", 
+            price_per_unit: "", 
+            expiry_date: "", 
+            stored_location: "" 
         });
         setSelectedId(null);
     };
 
     const columns = useMemo(() => [
         { field: "id", headerName: "ID", width: 80, type: "number", filterOperators: BACKEND_NUMERIC_OPS },
-        { 
-            field: "farmer_photo", 
-            headerName: "FARMER PHOTO", 
-            width: 120, 
-            sortable: false, 
-            filterable: false,
-            renderCell: (p) => {
-                const farmerData = farmers.find(f => f.first_name?.toLowerCase() === p.row.farmer_name?.toLowerCase());
-                return (
-                    <Box sx={styles.cellCenter}>
-                        <AuthorizedAvatar path={farmerData?.f_photo} name={p.row?.farmer_name} variant="circular" size={40} />
-                    </Box>
-                );
-            }
-        },
-        { 
-            field: "crop_photo", 
-            headerName: "CROP PHOTO", 
-            width: 120, 
-            sortable: false,
-            filterable: false,
-            renderCell: (p) => {
-                const cropData = crops.find(c => c.crop_name?.toLowerCase() === p.row.crop_name?.toLowerCase());
-                return (
-                    <Box sx={styles.cellCenter}>
-                        <AuthorizedAvatar path={cropData?.photo} name={p.row?.crop_name} variant="rounded" size={40} />
-                    </Box>
-                );
-            }
-        },
         { field: "farmer_name", headerName: "FARMER", width: 160, type: "string", filterOperators: STRICT_STRING_OPS },
         { field: "crop_name", headerName: "CROP", width: 140, type: "string", filterOperators: STRICT_STRING_OPS },
         { field: "quantity", headerName: "QTY", width: 100, type: 'number', filterOperators: BACKEND_NUMERIC_OPS, renderCell: (p) => `${p.value} ${p.row.unit}` },
@@ -286,21 +231,15 @@ function StockList() {
             renderCell: (params) => (
                 <Box sx={styles.actionBox} className="no-print">
                     <IconButton sx={styles.editBtn} onClick={() => { 
-                        const fData = farmers.find(f => f.first_name === params.row.farmer_name);
-                        const cData = crops.find(c => c.crop_name === params.row.crop_name);
                         setSelectedId(params.row.id);
-                        setFormData({ 
-                            farmer_id: fData?.f_id || "", 
-                            crop_id: cData?.crop_id || "",
-                            items: [{ ...params.row }] 
-                        });
+                        setFormData({ ...params.row });
                         setOpen(true);
                     }}><EditIcon fontSize="small" /></IconButton>
                     <IconButton sx={styles.deleteBtn} onClick={() => handleDelete(params.row.id)}><DeleteIcon fontSize="small" /></IconButton>
                 </Box>
             )
         }
-    ], [farmers, crops]); 
+    ], []); 
 
     return (
         <Box sx={styles.container} className="print-root">
@@ -337,64 +276,53 @@ function StockList() {
                 />
             </Paper>
 
-            {/* MODALS HIDE AUTOMATICALLY DURING PRINT VIA .no-print CLASS */}
             <Dialog open={open} onClose={() => !submitLoading && setOpen(false)} maxWidth="lg" fullWidth className="no-print">
                 <DialogTitle sx={styles.modalTitle}>{selectedId ? "EDIT STOCK ENTRY" : "NEW STOCK REGISTRATION"}</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12} md={3}>
+                        
+                        {/* THE SINGLE BACKEND-STRICT DROPDOWN: FARMER / CROP */}
+                        <Grid item xs={12} md={6}>
                             <TextField 
-                                select fullWidth label="Farmers *" size="small" 
-                                disabled={!!selectedId} value={formData.farmer_id} 
-                                onChange={(e) => setFormData({...formData, farmer_id: e.target.value})}
+                                select fullWidth label="Farmer / His Crop *" size="small" 
+                                disabled={!!selectedId} value={formData.stock_id} 
+                                onChange={(e) => handleFieldChange("stock_id", e.target.value)}
                                 sx={styles.selectInput}
                             >
-                                {farmers.map(f => (
-                                    <MenuItem key={f.f_id} value={f.f_id}>
-                                        <Stack direction="row" spacing={1} alignItems="center">
-                                            <AuthorizedAvatar path={f.f_photo} name={f.first_name} size={22} variant="circular" />
-                                            <Typography variant="body2">{f.first_name}</Typography>
-                                        </Stack>
+                                {stockMasters.map(m => (
+                                    <MenuItem key={m.stock_id} value={m.stock_id}>
+                                        {m.farmer_name} | {m.crop_name}
                                     </MenuItem>
                                 ))}
                             </TextField>
                         </Grid>
+
                         <Grid item xs={12} md={3}>
-                            <TextField 
-                                select fullWidth label="Crops *" size="small" 
-                                disabled={!!selectedId} value={formData.crop_id} 
-                                onChange={(e) => setFormData({...formData, crop_id: e.target.value})}
-                                sx={styles.selectInput}
-                            >
-                                {crops.map(c => (
-                                    <MenuItem key={c.crop_id} value={c.crop_id}>
-                                        <Stack direction="row" spacing={1} alignItems="center">
-                                            <AuthorizedAvatar path={c.photo} name={c.crop_name} size={22} variant="rounded" />
-                                            <Typography variant="body2">{c.crop_name}</Typography>
-                                        </Stack>
-                                    </MenuItem>
-                                ))}
+                            <TextField select fullWidth label="Unit *" size="small" value={formData.unit} onChange={(e) => handleFieldChange("unit", e.target.value)}>
+                                <MenuItem value="kg">Kilograms (kg)</MenuItem>
+                                <MenuItem value="g">Grams (g)</MenuItem>
+                                <MenuItem value="TON">Metric Tons (TON)</MenuItem>
+                                <MenuItem value="Q">Quintal (Q)</MenuItem>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} md={2}><TextField fullWidth type="number" label="Quantity *" size="small" value={formData.items[0].quantity} onChange={(e) => handleItemChange("quantity", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={2}>
-                            <TextField select fullWidth label="Unit *" size="small" value={formData.items[0].unit} onChange={(e) => handleItemChange("unit", e.target.value)}>
-                                <MenuItem value="kg">kg</MenuItem>
-                                <MenuItem value="g">g</MenuItem>
-                                <MenuItem value="TON">TON</MenuItem>
-                                <MenuItem value="Q">Q</MenuItem>
-                            </TextField>
-                        </Grid>
-                        <Grid item xs={12} md={2}><TextField fullWidth type="number" label="Price per Unit *" size="small" value={formData.items[0].price_per_unit} onChange={(e) => handleItemChange("price_per_unit", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={4}><TextField fullWidth type="number" label="Hectares (Land Area)" size="small" value={formData.items[0].hectares} onChange={(e) => handleItemChange("hectares", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={4}><TextField fullWidth type="date" label="Harvest Date" size="small" InputLabelProps={{ shrink: true }} value={formData.items[0].harvested_date} onChange={(e) => handleItemChange("harvested_date", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={4}><TextField fullWidth type="date" label="Expiry Date" size="small" InputLabelProps={{ shrink: true }} value={formData.items[0].expiry_date || ""} onChange={(e) => handleItemChange("expiry_date", e.target.value)} /></Grid>
-                        <Grid item xs={12}><TextField fullWidth label="Storage/Warehouse Location" size="small" value={formData.items[0].stored_location || ""} onChange={(e) => handleItemChange("stored_location", e.target.value)} /></Grid>
-                        {formData.items[0].quantity && formData.items[0].price_per_unit && (
+
+                        <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Quantity *" size="small" value={formData.quantity} onChange={(e) => handleFieldChange("quantity", e.target.value)} /></Grid>
+                        
+                        <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Price per Unit *" size="small" value={formData.price_per_unit} onChange={(e) => handleFieldChange("price_per_unit", e.target.value)} /></Grid>
+                        
+                        <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Hectares" size="small" value={formData.hectares} onChange={(e) => handleFieldChange("hectares", e.target.value)} /></Grid>
+                        
+                        <Grid item xs={12} md={3}><TextField fullWidth type="date" label="Harvest Date" size="small" InputLabelProps={{ shrink: true }} value={formData.harvested_date} onChange={(e) => handleFieldChange("harvested_date", e.target.value)} /></Grid>
+                        
+                        <Grid item xs={12} md={3}><TextField fullWidth type="date" label="Expiry Date" size="small" InputLabelProps={{ shrink: true }} value={formData.expiry_date || ""} onChange={(e) => handleFieldChange("expiry_date", e.target.value)} /></Grid>
+                        
+                        <Grid item xs={12}><TextField fullWidth label="Storage/Warehouse Location" size="small" value={formData.stored_location || ""} onChange={(e) => handleFieldChange("stored_location", e.target.value)} /></Grid>
+                        
+                        {formData.quantity && formData.price_per_unit && (
                             <Grid item xs={12}>
                                 <Box sx={styles.totalBox}>
                                     <Typography variant="overline" sx={{ fontWeight: 700 }}>Calculated Total Value</Typography>
-                                    <Typography variant="h5" sx={{ fontWeight: 900 }}>₹{formData.items[0].quantity * formData.items[0].price_per_unit}</Typography>
+                                    <Typography variant="h5" sx={{ fontWeight: 900 }}>₹{formData.quantity * formData.price_per_unit}</Typography>
                                 </Box>
                             </Grid>
                         )}

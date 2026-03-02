@@ -66,7 +66,7 @@ const WholesalerStockMaster = () => {
 
     const [formRows, setFormRows] = useState([{ 
         unit: "kg", quantity: "", price_per_unit: "", stored_location: "",
-        batch_no: "", expiry_date: "" 
+        expiry_date: "" 
     }]);
 
     const [editData, setEditData] = useState({ 
@@ -103,7 +103,7 @@ const WholesalerStockMaster = () => {
     useEffect(() => { loadData(); }, [loadData]);
     useEffect(() => { loadOptions(); }, []);
 
-    const handleAddRow = () => setFormRows([...formRows, { unit: "kg", quantity: "", price_per_unit: "", stored_location: "", batch_no: "", expiry_date: "" }]);
+    const handleAddRow = () => setFormRows([...formRows, { unit: "kg", quantity: "", price_per_unit: "", stored_location: "", expiry_date: "" }]);
     const handleRemoveRow = (idx) => { if (formRows.length > 1) setFormRows(formRows.filter((_, i) => i !== idx)); };
     const handleInputChange = (idx, field, val) => {
         const updated = [...formRows];
@@ -123,7 +123,7 @@ const WholesalerStockMaster = () => {
             await axiosInstance.post('/wholesaler-api/stock-master/', payload);
             setOpen(false);
             setRefresh(p => p + 1);
-            setFormRows([{ unit: "kg", quantity: "", price_per_unit: "", stored_location: "", batch_no: "", expiry_date: "" }]);
+            setFormRows([{ unit: "kg", quantity: "", price_per_unit: "", stored_location: "", expiry_date: "" }]);
             setMasterSelection({ w_id: "", crop_id: "" });
         } catch (err) { console.error(err.response?.data); } finally { setSubmitLoading(false); }
     };
@@ -231,7 +231,7 @@ const WholesalerStockMaster = () => {
                 </Box>
             </Box>
 
-            {/* PRINT ONLY CONTENT AREA (EXACT SAME AS FARMERLIST) */}
+            {/* PRINT ONLY CONTENT AREA */}
             <Box className="print-only" sx={styles.printContainer}>
                 <Box sx={styles.farmerPrintHeader}>
                     <Typography sx={styles.farmerPrintLogo}>AGRO-I</Typography>
@@ -279,7 +279,7 @@ const WholesalerStockMaster = () => {
                 />
             </Box>
 
-            {/* DIALOGS REMAIN SAME */}
+            {/* REGISTRATION DIALOG */}
             <Dialog open={open} onClose={() => !submitLoading && setOpen(false)} maxWidth="xl" fullWidth className="no-print">
                 <DialogTitle sx={styles.modalTitle}>WHOLESALER STOCK REGISTRATION</DialogTitle>
                 <DialogContent dividers>
@@ -339,7 +339,6 @@ const WholesalerStockMaster = () => {
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={styles.tableHeader}>BATCH NO</TableCell>
                                     <TableCell sx={styles.tableHeader}>QTY</TableCell>
                                     <TableCell sx={styles.tableHeader}>UNIT</TableCell>
                                     <TableCell sx={styles.tableHeader}>PRICE/UNIT</TableCell>
@@ -351,7 +350,6 @@ const WholesalerStockMaster = () => {
                             <TableBody>
                                 {formRows.map((row, index) => (
                                     <TableRow key={index}>
-                                        <TableCell sx={styles.tableCell}><TextField fullWidth size="small" value={row.batch_no} onChange={(e) => handleInputChange(index, "batch_no", e.target.value)} /></TableCell>
                                         <TableCell sx={styles.tableCell}><TextField fullWidth size="small" type="number" value={row.quantity} onChange={(e) => handleInputChange(index, "quantity", e.target.value)} /></TableCell>
                                         <TableCell sx={styles.tableCell}>
                                             <Select fullWidth size="small" value={row.unit} onChange={(e) => handleInputChange(index, "unit", e.target.value)}>
@@ -379,6 +377,7 @@ const WholesalerStockMaster = () => {
                 </DialogActions>
             </Dialog>
 
+            {/* EDIT DIALOG */}
             <Dialog open={editOpen} onClose={() => !submitLoading && setEditOpen(false)} maxWidth="sm" fullWidth className="no-print">
                 <DialogTitle sx={styles.modalTitle}>UPDATE STOCK ASSOCIATIONS</DialogTitle>
                 <DialogContent dividers>
@@ -478,7 +477,6 @@ const styles = {
     printBtn: { color: "#2e7d32", fontWeight: "900", border: "1px solid #2e7d32" },
     dialogActions: { p: 3, justifyContent: "space-between" },
     
-    // --- FARMER LIST PRINT STYLE MATCH ---
     printContainer: { width: '100%', padding: '0px' },
     farmerPrintHeader: { 
         display: 'flex', 
