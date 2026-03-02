@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Mar 01, 2026 at 10:17 AM
+-- Generation Time: Mar 01, 2026 at 11:49 AM
 -- Server version: 8.0.41
 -- PHP Version: 8.2.12
 
@@ -21,28 +21,6 @@ SET time_zone = "+00:00";
 -- Database: `aggriconnect`
 --
 
--- --------------------------------------------------------
-
---
--- Table structure for table `farmer_cropmaster`
---
-
-CREATE TABLE `farmer_cropmaster` (
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `crop_id` int NOT NULL,
-  `crop_name` varchar(50) NOT NULL,
-  `crop_variety` varchar(100) NOT NULL,
-  `photo` varchar(100) DEFAULT NULL,
-  `description` longtext
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `farmer_cropmaster`
---
-
-TRUNCATE TABLE `farmer_cropmaster`;
 --
 -- Dumping data for table `farmer_cropmaster`
 --
@@ -52,36 +30,6 @@ INSERT INTO `farmer_cropmaster` (`created_at`, `updated_at`, `deleted`, `crop_id
 ('2026-01-30 15:42:49.911045', '2026-01-30 15:43:42.080541', 1, 2, 'rice', 'ewiubfewubfu', '', 'fewigfyewogfuygewf'),
 ('2026-01-30 15:44:05.429117', '2026-01-30 15:44:05.429164', 0, 3, 'rice', 'ewifbeiwgf', '', 'fwefvfytwefvyetwvcy');
 
--- --------------------------------------------------------
-
---
--- Table structure for table `farmer_farmer`
---
-
-CREATE TABLE `farmer_farmer` (
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `f_id` int NOT NULL,
-  `user_name` varchar(150) NOT NULL,
-  `password` varchar(128) NOT NULL,
-  `first_name` varchar(50) NOT NULL,
-  `last_name` varchar(50) NOT NULL,
-  `gender` varchar(1) NOT NULL,
-  `sub_district` varchar(100) NOT NULL,
-  `state` varchar(50) NOT NULL,
-  `address` varchar(255) NOT NULL,
-  `ekyf_id` varchar(15) NOT NULL,
-  `f_phone` varchar(11) NOT NULL,
-  `f_photo` varchar(100) DEFAULT NULL,
-  `aadhar_no` varchar(12) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `farmer_farmer`
---
-
-TRUNCATE TABLE `farmer_farmer`;
 --
 -- Dumping data for table `farmer_farmer`
 --
@@ -132,54 +80,6 @@ INSERT INTO `farmer_farmer` (`created_at`, `updated_at`, `deleted`, `f_id`, `use
 ('2026-01-30 06:32:38.001389', '2026-01-30 06:32:38.001437', 0, 99, 'vewibverv', 'pbkdf2_sha256$1200000$bnONKoobiQDn3zmPnlCA7a$1RZhWBhMWO3FNeoAvFBfOR0go09zddENAZrlJ8E54nQ=', 'veipuvbiure', '3voih[r3iov', 'F', 'wecef', 'vweucygwc', 'ervervevf', '123', '8759403987', '', '875940387654'),
 ('2026-01-30 13:42:43.832972', '2026-01-30 13:42:43.833027', 0, 100, 'farmer373', 'pbkdf2_sha256$1200000$IASkwy9ITXvoEZRwIAS96r$YdGUWHBR0yDQlCnqB7ziaOoJINeTU5oFi2DQOZIYfdU=', 'viwpfbef', 'jfwfu', 'M', 'Ahmedabad', 'Gujarat', 'weipbfeiubfioefuf', '67', '7849380584', 'farmer/Photo_EcYeDw7.jpg', '784938746299');
 
--- --------------------------------------------------------
-
---
--- Table structure for table `farmer_listing`
---
-
-CREATE TABLE `farmer_listing` (
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `l_id` int NOT NULL,
-  `qty_available` decimal(8,2) NOT NULL,
-  `price_per_unit` decimal(12,2) NOT NULL,
-  `status` varchar(1) NOT NULL,
-  `stock_detail_id` bigint NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `farmer_listing`
---
-
-TRUNCATE TABLE `farmer_listing`;
--- --------------------------------------------------------
-
---
--- Table structure for table `farmer_stockdetail`
---
-
-CREATE TABLE `farmer_stockdetail` (
-  `id` bigint NOT NULL,
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `harvested_date` date NOT NULL,
-  `hectares` decimal(8,2) DEFAULT NULL,
-  `quantity` decimal(8,2) NOT NULL,
-  `unit` varchar(3) NOT NULL,
-  `price_per_unit` decimal(12,2) NOT NULL,
-  `expiry_date` date DEFAULT NULL,
-  `stored_location` varchar(255) DEFAULT NULL,
-  `stock_id_id` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `farmer_stockdetail`
---
-
-TRUNCATE TABLE `farmer_stockdetail`;
 --
 -- Dumping data for table `farmer_stockdetail`
 --
@@ -204,26 +104,6 @@ INSERT INTO `farmer_stockdetail` (`id`, `created_at`, `updated_at`, `deleted`, `
 (17, '2026-01-31 14:20:16.068439', '2026-01-31 14:20:16.068467', 0, '2026-01-31', 20.00, 20.00, 'g', 30.00, '2026-04-30', 'Ahmedabad', 12),
 (18, '2026-01-31 14:20:16.069517', '2026-01-31 14:20:16.069541', 0, '2026-01-31', 30.00, 30.00, 'kg', 30.00, '2026-05-30', 'Ahmedabad', 12);
 
--- --------------------------------------------------------
-
---
--- Table structure for table `farmer_stockmaster`
---
-
-CREATE TABLE `farmer_stockmaster` (
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `stock_id` int NOT NULL,
-  `crop_id_id` int NOT NULL,
-  `farmer_id_id` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `farmer_stockmaster`
---
-
-TRUNCATE TABLE `farmer_stockmaster`;
 --
 -- Dumping data for table `farmer_stockmaster`
 --
@@ -242,31 +122,6 @@ INSERT INTO `farmer_stockmaster` (`created_at`, `updated_at`, `deleted`, `stock_
 ('2026-01-31 13:48:45.351798', '2026-01-31 13:48:45.351841', 0, 11, 3, 98),
 ('2026-01-31 14:20:16.065817', '2026-01-31 14:20:16.065855', 0, 12, 1, 97);
 
--- --------------------------------------------------------
-
---
--- Table structure for table `wholesaler_stockdetail`
---
-
-CREATE TABLE `wholesaler_stockdetail` (
-  `id` bigint NOT NULL,
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `intake_date` date NOT NULL,
-  `quantity` decimal(8,2) NOT NULL,
-  `unit` varchar(3) NOT NULL,
-  `price_per_unit` decimal(12,2) NOT NULL,
-  `expiry_date` date DEFAULT NULL,
-  `warehouse_loc` varchar(255) DEFAULT NULL,
-  `stock_id_id` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `wholesaler_stockdetail`
---
-
-TRUNCATE TABLE `wholesaler_stockdetail`;
 --
 -- Dumping data for table `wholesaler_stockdetail`
 --
@@ -275,28 +130,11 @@ INSERT INTO `wholesaler_stockdetail` (`id`, `created_at`, `updated_at`, `deleted
 (1, '2026-02-28 10:24:38.679095', '2026-02-28 10:24:38.679136', 0, '2026-02-28', 4.00, '', 30.00, '2026-09-28', NULL, 1),
 (2, '2026-02-28 10:35:02.412888', '2026-02-28 10:35:02.412926', 0, '2026-02-28', 15.00, '', 25.00, '2026-06-30', NULL, 2),
 (3, '2026-02-28 11:07:21.319235', '2026-02-28 11:07:21.319273', 0, '2026-02-28', 20.00, '', 30.00, '2026-10-01', NULL, 3),
-(4, '2026-03-01 04:58:13.386114', '2026-03-01 04:58:13.386155', 0, '2026-03-01', 12.00, '', 30.00, '2027-05-13', NULL, 4);
+(4, '2026-03-01 04:58:13.386114', '2026-03-01 04:58:13.386155', 0, '2026-03-01', 12.00, '', 30.00, '2027-05-13', NULL, 4),
+(5, '2026-03-01 10:39:32.182174', '2026-03-01 10:43:06.358371', 1, '2026-03-01', 10.00, '', 100.00, '2026-03-11', 'Ahmedabad', 5),
+(6, '2026-03-01 10:43:47.945069', '2026-03-01 10:43:47.945102', 0, '2026-03-01', 100.00, '', 100.00, '2026-03-04', 'Ahmedabad', 6),
+(7, '2026-03-01 10:44:51.209951', '2026-03-01 10:44:51.209995', 0, '2026-03-01', 10.00, '', 10.00, '2026-03-11', 'Ahm', 7);
 
--- --------------------------------------------------------
-
---
--- Table structure for table `wholesaler_stockmaster`
---
-
-CREATE TABLE `wholesaler_stockmaster` (
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `stock_id` int NOT NULL,
-  `crop_id_id` int NOT NULL,
-  `w_id_id` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `wholesaler_stockmaster`
---
-
-TRUNCATE TABLE `wholesaler_stockmaster`;
 --
 -- Dumping data for table `wholesaler_stockmaster`
 --
@@ -305,42 +143,11 @@ INSERT INTO `wholesaler_stockmaster` (`created_at`, `updated_at`, `deleted`, `st
 ('2026-02-28 10:24:38.674551', '2026-02-28 11:05:17.369055', 0, 1, 1, 1),
 ('2026-02-28 10:35:02.411079', '2026-02-28 10:37:49.292980', 1, 2, 1, 1),
 ('2026-02-28 11:07:21.317153', '2026-02-28 11:07:21.317205', 0, 3, 3, 1),
-('2026-03-01 04:58:13.383102', '2026-03-01 04:58:13.383153', 0, 4, 3, 5);
+('2026-03-01 04:58:13.383102', '2026-03-01 04:58:13.383153', 0, 4, 3, 5),
+('2026-03-01 10:39:32.178481', '2026-03-01 10:42:56.094689', 1, 5, 1, 5),
+('2026-03-01 10:43:47.942935', '2026-03-01 10:43:47.942981', 0, 6, 1, 5),
+('2026-03-01 10:44:51.208276', '2026-03-01 10:44:51.208314', 0, 7, 1, 5);
 
--- --------------------------------------------------------
-
---
--- Table structure for table `wholesaler_wholesaler`
---
-
-CREATE TABLE `wholesaler_wholesaler` (
-  `created_at` datetime(6) NOT NULL,
-  `updated_at` datetime(6) NOT NULL,
-  `deleted` tinyint(1) NOT NULL,
-  `w_id` int NOT NULL,
-  `email` varchar(150) NOT NULL,
-  `password` varchar(128) NOT NULL,
-  `first_name` varchar(50) NOT NULL,
-  `last_name` varchar(50) NOT NULL,
-  `gender` varchar(1) NOT NULL,
-  `city` varchar(100) NOT NULL,
-  `state` varchar(50) NOT NULL,
-  `address` varchar(255) NOT NULL,
-  `gst_no` varchar(15) NOT NULL,
-  `w_phone` varchar(11) NOT NULL,
-  `w_photo` varchar(100) DEFAULT NULL,
-  `aadhar_no` varchar(12) NOT NULL,
-  `business_proof` varchar(100) NOT NULL,
-  `business_name` varchar(150) NOT NULL,
-  `status` varchar(1) NOT NULL,
-  `pan_no` varchar(10) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Truncate table before insert `wholesaler_wholesaler`
---
-
-TRUNCATE TABLE `wholesaler_wholesaler`;
 --
 -- Dumping data for table `wholesaler_wholesaler`
 --
@@ -349,160 +156,6 @@ INSERT INTO `wholesaler_wholesaler` (`created_at`, `updated_at`, `deleted`, `w_i
 ('2026-02-22 10:59:16.240715', '2026-02-22 11:02:59.783183', 0, 1, 'abc@gmail.com', 'pbkdf2_sha256$1200000$s8Kcw1m6QlKNK2UwJmYnqU$Bpixb+8xUC0POZPed9ea+jmHTjYreNOEZJVkLwtWlzE=', 'Pratham', 'Makwana', 'M', 'Ahmedabad', 'Gujarat', '3 , satyam flat , audichyanagar D-37 nr vima yogna hospital , Kankaria , Ahmedabad-380022', '53AAAAA0000W3Z4', '7849380493', 'wholesaler/Photo.jpg', '875849384738', 'wholesaler/business_proof/SEM-4.jpg', 'Pratham', 'U', 'ABCDE1234W'),
 ('2026-02-22 11:07:43.297204', '2026-02-28 09:41:59.151806', 1, 2, 'abcd@gmail.com', 'pbkdf2_sha256$1200000$Lt3fJi4dP0smzDiDoW9qwq$CWbXrvKBr2+XpSiLQwa9aio2OGHBhPUyCmqKxLp5DLM=', 'udit', 'chuhan', 'M', 'Ahmedabad', 'Gujarat', '3-Satyam Flat , Audichya nagar , Opp-Juni Paylot Dairy , kankaria, Ahmedabad\r\nApartment', '22AAAAA0000A1Z5', '8574938393', '', '857483930293', 'wholesaler/business_proof/SEM-2.jpg', 'UDIT', 'U', 'ABCDE1234A'),
 ('2026-03-01 03:50:25.269604', '2026-03-01 03:50:25.269660', 0, 5, 'abcd123@gmail.com', 'pbkdf2_sha256$1200000$ysSOexxwGYe5ufURPryHBJ$A46drRfyAEZNG7w9TlAhdJe0TbO20WBGtWmwMTUFiTk=', 'Jignal', 'Gajjar', 'M', 'Ahmedabad', 'Gujarat', '3 , satyam flat , audichyanagar D-37 nr vima yogna hospital , Kankaria , Ahmedabad-380022', '22AAAAA0000A1Z3', '9839284765', '', '876839478398', 'wholesaler/business_proof/SEM-1_PQ8oZud.jpg', 'Jignal', 'U', 'ABCDE1238R');
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `farmer_cropmaster`
---
-ALTER TABLE `farmer_cropmaster`
-  ADD PRIMARY KEY (`crop_id`);
-
---
--- Indexes for table `farmer_farmer`
---
-ALTER TABLE `farmer_farmer`
-  ADD PRIMARY KEY (`f_id`),
-  ADD UNIQUE KEY `user_name` (`user_name`),
-  ADD UNIQUE KEY `ekyf_id` (`ekyf_id`),
-  ADD UNIQUE KEY `aadhar_no` (`aadhar_no`);
-
---
--- Indexes for table `farmer_listing`
---
-ALTER TABLE `farmer_listing`
-  ADD PRIMARY KEY (`l_id`),
-  ADD KEY `farmer_listing_stock_detail_id_633c5717_fk_farmer_stockdetail_id` (`stock_detail_id`);
-
---
--- Indexes for table `farmer_stockdetail`
---
-ALTER TABLE `farmer_stockdetail`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `farmer_stockdetail_stock_id_id_98e118f7_fk_farmer_st` (`stock_id_id`);
-
---
--- Indexes for table `farmer_stockmaster`
---
-ALTER TABLE `farmer_stockmaster`
-  ADD PRIMARY KEY (`stock_id`),
-  ADD KEY `farmer_stockmaster_crop_id_id_cbaad8e3_fk_farmer_cr` (`crop_id_id`),
-  ADD KEY `farmer_stockmaster_farmer_id_id_28bc2766_fk_farmer_farmer_f_id` (`farmer_id_id`);
-
---
--- Indexes for table `wholesaler_stockdetail`
---
-ALTER TABLE `wholesaler_stockdetail`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `wholesaler_stockdeta_stock_id_id_e2139d9b_fk_wholesale` (`stock_id_id`);
-
---
--- Indexes for table `wholesaler_stockmaster`
---
-ALTER TABLE `wholesaler_stockmaster`
-  ADD PRIMARY KEY (`stock_id`),
-  ADD KEY `wholesaler_stockmast_w_id_id_13b4b5bc_fk_wholesale` (`w_id_id`),
-  ADD KEY `wholesaler_stockmast_crop_id_id_5f00a0ce_fk_farmer_cr` (`crop_id_id`);
-
---
--- Indexes for table `wholesaler_wholesaler`
---
-ALTER TABLE `wholesaler_wholesaler`
-  ADD PRIMARY KEY (`w_id`),
-  ADD UNIQUE KEY `email` (`email`),
-  ADD UNIQUE KEY `gst_no` (`gst_no`),
-  ADD UNIQUE KEY `aadhar_no` (`aadhar_no`),
-  ADD UNIQUE KEY `pan_no` (`pan_no`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `farmer_cropmaster`
---
-ALTER TABLE `farmer_cropmaster`
-  MODIFY `crop_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `farmer_farmer`
---
-ALTER TABLE `farmer_farmer`
-  MODIFY `f_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `farmer_listing`
---
-ALTER TABLE `farmer_listing`
-  MODIFY `l_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `farmer_stockdetail`
---
-ALTER TABLE `farmer_stockdetail`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `farmer_stockmaster`
---
-ALTER TABLE `farmer_stockmaster`
-  MODIFY `stock_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `wholesaler_stockdetail`
---
-ALTER TABLE `wholesaler_stockdetail`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `wholesaler_stockmaster`
---
-ALTER TABLE `wholesaler_stockmaster`
-  MODIFY `stock_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `wholesaler_wholesaler`
---
-ALTER TABLE `wholesaler_wholesaler`
-  MODIFY `w_id` int NOT NULL AUTO_INCREMENT;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `farmer_listing`
---
-ALTER TABLE `farmer_listing`
-  ADD CONSTRAINT `farmer_listing_stock_detail_id_633c5717_fk_farmer_stockdetail_id` FOREIGN KEY (`stock_detail_id`) REFERENCES `farmer_stockdetail` (`id`);
-
---
--- Constraints for table `farmer_stockdetail`
---
-ALTER TABLE `farmer_stockdetail`
-  ADD CONSTRAINT `farmer_stockdetail_stock_id_id_98e118f7_fk_farmer_st` FOREIGN KEY (`stock_id_id`) REFERENCES `farmer_stockmaster` (`stock_id`);
-
---
--- Constraints for table `farmer_stockmaster`
---
-ALTER TABLE `farmer_stockmaster`
-  ADD CONSTRAINT `farmer_stockmaster_crop_id_id_cbaad8e3_fk_farmer_cr` FOREIGN KEY (`crop_id_id`) REFERENCES `farmer_cropmaster` (`crop_id`),
-  ADD CONSTRAINT `farmer_stockmaster_farmer_id_id_28bc2766_fk_farmer_farmer_f_id` FOREIGN KEY (`farmer_id_id`) REFERENCES `farmer_farmer` (`f_id`);
-
---
--- Constraints for table `wholesaler_stockdetail`
---
-ALTER TABLE `wholesaler_stockdetail`
-  ADD CONSTRAINT `wholesaler_stockdeta_stock_id_id_e2139d9b_fk_wholesale` FOREIGN KEY (`stock_id_id`) REFERENCES `wholesaler_stockmaster` (`stock_id`);
-
---
--- Constraints for table `wholesaler_stockmaster`
---
-ALTER TABLE `wholesaler_stockmaster`
-  ADD CONSTRAINT `wholesaler_stockmast_crop_id_id_5f00a0ce_fk_farmer_cr` FOREIGN KEY (`crop_id_id`) REFERENCES `farmer_cropmaster` (`crop_id`),
-  ADD CONSTRAINT `wholesaler_stockmast_w_id_id_13b4b5bc_fk_wholesale` FOREIGN KEY (`w_id_id`) REFERENCES `wholesaler_wholesaler` (`w_id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
