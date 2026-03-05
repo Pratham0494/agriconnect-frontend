@@ -8,8 +8,8 @@ const setCookie = (name, value, days) => {
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         expires = "; expires=" + date.toUTCString();
     }
-    
-    
+
+
     document.cookie = `${name}=${value || ""}${expires}; path=/; SameSite=Lax; Secure`;
 };
 
@@ -31,8 +31,8 @@ const eraseCookie = (name) => {
 
 
 const axiosInstance = axios.create({
-    baseURL: 'http://127.0.0.1:8000/',
-    timeout: 5000,
+    baseURL: 'http://16.16.201.131/',
+    timeout: 20000,
     headers: {
         'Content-Type': 'application/json',
         accept: 'application/json',
@@ -41,10 +41,17 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
     (config) => {
-        
-        const token = getCookie('access_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        if (config.url && config.url.includes('s3.amazonaws.com')) {
+            // Strip the Authorization header so AWS doesn't throw a 400 error
+            delete config.headers['Authorization'];
+            if (config.headers.common) {
+                delete config.headers.common['Authorization'];
+            }
+        } else {
+            const token = getCookie('access_token');
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
         }
         return config;
     },
@@ -58,25 +65,25 @@ axiosInstance.interceptors.response.use(
 
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
-            
-            
+
+
             const refreshToken = getCookie('refresh_token');
 
             if (refreshToken) {
                 try {
-                    
-                    const response = await axios.post('http://127.0.0.1:8000/admin-api/token/refresh/', {
+
+                    const response = await axios.post('http://16.16.201.131/admin-api/token/refresh/', {
                         refresh: refreshToken,
                     });
 
                     const { access } = response.data;
 
-                    
+
                     setCookie('access_token', access, 1);
 
                     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${access}`;
                     originalRequest.headers['Authorization'] = `Bearer ${access}`;
-                    
+
                     return axiosInstance(originalRequest);
                 } catch (refreshError) {
                     console.error("Session expired.");
