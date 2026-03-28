@@ -8,7 +8,7 @@ import {
     Box, TextField, Button, Dialog, DialogTitle, DialogContent,
     DialogActions, Grid, MenuItem, IconButton, Typography, Select,
     FormControl, InputLabel, Avatar, CircularProgress, InputAdornment,
-    GlobalStyles, FormHelperText
+    GlobalStyles, FormHelperText, Tooltip
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -16,6 +16,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import SearchIcon from "@mui/icons-material/Search";
 import PrintIcon from "@mui/icons-material/Print";
 import FilePresentIcon from "@mui/icons-material/FilePresent";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser"; 
 
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery";
@@ -85,8 +87,8 @@ function WholesalerList() {
         email: "", password: "", confirm_password: "", first_name: "", 
         last_name: "", gender: "M", city: "", state: "", address: "", 
         gst_no: "", w_phone: "", w_photo: null, aadhar_no: "",
-        business_proof: null, business_name: "", pan_no: "", 
-        status: "U", deleted: 0
+        aadhar_photo: null, business_proof: null, business_name: "", 
+        pan_no: "", status: "U", deleted: 0
     });
 
     const queryPayload = useMuiDrfQuery({
@@ -121,65 +123,40 @@ function WholesalerList() {
     useEffect(() => { loadData(); }, [loadData]);
 
     const handleInputChange = (field, value) => {
-        setFormData({ ...formData, [field]: value });
+        setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
-            const newErrors = { ...errors };
-            delete newErrors[field];
-            setErrors(newErrors);
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
         }
     };
 
-    const validateForm = () => {
-        let tempErrors = {};
-        // Backend Regex Patterns
-        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-        const aadharRegex = /^[2-9]{1}[0-9]{11}$/;
-        const phoneRegex = /^[0-9]{10,11}$/;
-
-        if (!formData.business_name) tempErrors.business_name = "Business Name is required";
-        if (!formData.email) tempErrors.email = "Email is required";
-        else if (!/\S+@\S+\.\S+/.test(formData.email)) tempErrors.email = "Invalid Email format";
-        
-        if (!formData.w_phone) tempErrors.w_phone = "Phone number is required";
-        else if (!phoneRegex.test(formData.w_phone)) tempErrors.w_phone = "Enter a valid 10 or 11 digit Phone number";
-        
-        if (!selectedId) {
-            if (!formData.password) tempErrors.password = "Password is required";
-            if (formData.password !== formData.confirm_password) tempErrors.confirm_password = "Passwords do not match";
+    const handleVerify = async (id) => {
+        if(window.confirm("Verify this wholesaler and grant access?")) {
+            try {
+                await axiosInstance.patch(`/wholesaler-api/wholesaler/${id}/`, { status: 'V' });
+                setRefresh(p => p + 1);
+            } catch (err) { console.error("Verification Error:", err); }
         }
-
-        if (!formData.first_name) tempErrors.first_name = "First name is required";
-        if (!formData.city) tempErrors.city = "City is required";
-
-        if (!formData.gst_no) tempErrors.gst_no = "GST Number is required";
-        else if (!gstRegex.test(formData.gst_no)) tempErrors.gst_no = "Enter a valid 15-digit GST number (Format: 22AAAAA0000A1Z5)";
-
-        if (!formData.pan_no) tempErrors.pan_no = "PAN is required";
-        else if (!panRegex.test(formData.pan_no)) tempErrors.pan_no = "Enter a valid 10-digit PAN number (e.g., ABCDE1234F)";
-
-        if (!formData.aadhar_no) tempErrors.aadhar_no = "Aadhar is required";
-        else if (!aadharRegex.test(formData.aadhar_no)) tempErrors.aadhar_no = "Invalid Aadhar Number (12 digits, cannot start with 0 or 1)";
-
-        if (!formData.business_proof && !selectedId) tempErrors.business_proof = "Business proof document is required";
-        
-        setErrors(tempErrors);
-        return Object.keys(tempErrors).length === 0;
     };
 
     const handleSubmit = async () => {
-        if (!validateForm()) return;
         setSubmitLoading(true);
         const uploadData = new FormData();
+        
         Object.keys(formData).forEach(key => {
             if (["confirm_password", "created_at", "updated_at"].includes(key)) return;
             if (selectedId && key === "password" && !formData[key]) return;
-            if ((key === "w_photo" || key === "business_proof") && formData[key] instanceof File) {
+            
+            if (formData[key] instanceof File) {
                 uploadData.append(key, formData[key]);
-            } else if (formData[key] !== null && formData[key] !== "" && !["w_photo", "business_proof"].includes(key)) {
+            } else if (formData[key] !== null && formData[key] !== "" && !(formData[key] instanceof File)) {
                 uploadData.append(key, formData[key]);
             }
         });
+
         try {
             const url = selectedId ? `/wholesaler-api/wholesaler/${selectedId}/` : `/wholesaler-api/wholesaler/`;
             await axiosInstance({
@@ -218,8 +195,8 @@ function WholesalerList() {
             email: "", password: "", confirm_password: "", first_name: "", 
             last_name: "", gender: "M", city: "", state: "", address: "", 
             gst_no: "", w_phone: "", w_photo: null, aadhar_no: "",
-            business_proof: null, business_name: "", pan_no: "", 
-            status: "U", deleted: 0
+            aadhar_photo: null, business_proof: null, business_name: "", 
+            pan_no: "", status: "U", deleted: 0
         });
         setPreview(null);
         setSelectedId(null);
@@ -234,10 +211,8 @@ function WholesalerList() {
         },
         { field: "business_name", headerName: "BUSINESS", width: 150, filterOperators: stringOperators },
         { field: "first_name", headerName: "FIRST NAME", width: 130, filterOperators: stringOperators },
-        { field: "last_name", headerName: "LAST NAME", width: 130, filterOperators: stringOperators },
         { field: "email", headerName: "EMAIL", width: 180, filterOperators: stringOperators },
         { field: "gst_no", headerName: "GST NO", width: 150, filterOperators: stringOperators },
-        { field: "pan_no", headerName: "PAN", width: 120, filterOperators: stringOperators },
         { 
             field: "status", headerName: "STATUS", width: 120, 
             renderCell: (p) => (
@@ -247,15 +222,22 @@ function WholesalerList() {
             )
         },
         { field: "w_phone", headerName: "PHONE", width: 130, filterOperators: numericOperators },
-        { field: "state", headerName: "STATE", width: 120, filterOperators: stringOperators },
+        { field: "city", headerName: "CITY", width: 120, filterOperators: stringOperators },
         { 
             field: "created_at", headerName: "JOINED", width: 150, type: "date",
             valueFormatter: (params) => formatTime(params?.value || params)
         },
         {
-            field: "actions", headerName: "ACTIONS", width: 110, sortable: false, filterable: false,
+            field: "actions", headerName: "ACTIONS", width: 150, sortable: false, filterable: false,
             renderCell: (params) => (
                 <Box sx={styles.actionBox}>
+                    {params.row.status !== 'V' && (
+                        <Tooltip title="Verify Wholesaler">
+                            <IconButton sx={styles.verifyBtn} onClick={() => handleVerify(params.row.w_id)}>
+                                <VerifiedUserIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                     <IconButton sx={styles.editBtn} onClick={() => { 
                         setSelectedId(params.row.w_id); 
                         setFormData({...params.row, password: "", confirm_password: ""}); 
@@ -397,7 +379,7 @@ function WholesalerList() {
                                     <TextField error={!!errors.pan_no} helperText={errors.pan_no} fullWidth label="PAN Number *" size="small" value={formData.pan_no} onChange={e => handleInputChange("pan_no", e.target.value.toUpperCase())} />
                                 </Grid>
                                 <Grid item xs={4}>
-                                    <TextField error={!!errors.aadhar_no} helperText={errors.aadhar_no} fullWidth label="Aadhar Number *" size="small" value={formData.aadhar_no} onChange={e => handleInputChange("aadhar_no", e.target.value)} />
+                                    <TextField error={!!errors.aadhar_no} helperText={errors.aadhar_no} fullWidth label="Aadhar Number" size="small" value={formData.aadhar_no} onChange={e => handleInputChange("aadhar_no", e.target.value)} />
                                 </Grid>
                                 <Grid item xs={4}>
                                     <FormControl fullWidth size="small" error={!!errors.gender}>
@@ -415,13 +397,23 @@ function WholesalerList() {
                                 <Grid item xs={4}>
                                     <TextField error={!!errors.state} helperText={errors.state} fullWidth label="State" size="small" value={formData.state} onChange={e => handleInputChange("state", e.target.value)} />
                                 </Grid>
-                                <Grid item xs={12}>
+                                
+                                <Grid item xs={12} md={6}>
+                                    <Button variant="outlined" component="label" fullWidth startIcon={<PhotoCameraIcon />} sx={{ borderStyle: 'dashed', color: errors.aadhar_photo ? '#d32f2f' : '#1976d2', borderColor: errors.aadhar_photo ? '#d32f2f' : '#1976d2' }}>
+                                        {formData.aadhar_photo?.name || "AADHAR PHOTO (FOR OCR) *"}
+                                        <input type="file" hidden onChange={(e) => handleInputChange("aadhar_photo", e.target.files[0])} />
+                                    </Button>
+                                    {errors.aadhar_photo && <FormHelperText error>{errors.aadhar_photo}</FormHelperText>}
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
                                     <Button variant="outlined" component="label" fullWidth startIcon={<FilePresentIcon />} sx={{ borderStyle: 'dashed', color: errors.business_proof ? '#d32f2f' : '#2e7d32', borderColor: errors.business_proof ? '#d32f2f' : '#2e7d32' }}>
-                                        {formData.business_proof?.name || "UPLOAD BUSINESS PROOF (PDF/IMAGE) *"}
+                                        {formData.business_proof?.name || "UPLOAD BUSINESS PROOF *"}
                                         <input type="file" hidden onChange={(e) => handleInputChange("business_proof", e.target.files[0])} />
                                     </Button>
                                     {errors.business_proof && <FormHelperText error>{errors.business_proof}</FormHelperText>}
                                 </Grid>
+
                                 <Grid item xs={12}>
                                     <TextField error={!!errors.address} helperText={errors.address} fullWidth multiline rows={2} label="Address" size="small" value={formData.address} onChange={e => handleInputChange("address", e.target.value)} />
                                 </Grid>
@@ -451,32 +443,15 @@ const styles = {
         "& .MuiOutlinedInput-notchedOutline": { border: "1px solid #ccc" },
         "& .MuiOutlinedInput-root": { borderRadius: "4px" }
     },
-    printBtn: { 
-        color: "#2e7d32", 
-        fontWeight: "900", 
-        border: "1px solid #2e7d32", 
-        height: "40px", 
-        minWidth: "120px",
-        borderRadius: "2px"
-    },
-    addButton: { 
-        backgroundColor: "#2e7d32", 
-        color: "#ffffff", 
-        fontWeight: "800", 
-        borderRadius: "2px", 
-        height: "40px",
-        minWidth: "220px", 
-        whiteSpace: "nowrap" 
-    },
+    printBtn: { color: "#2e7d32", fontWeight: "900", border: "1px solid #2e7d32", height: "40px", minWidth: "120px", borderRadius: "2px" },
+    addButton: { backgroundColor: "#2e7d32", color: "#ffffff", fontWeight: "800", borderRadius: "2px", height: "40px", minWidth: "220px", whiteSpace: "nowrap" },
     gridBox: { boxShadow: "0 4px 20px rgba(0,0,0,0.08)", borderRadius: "4px" },
-    dataGrid: { 
-        border: "none", 
-        "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f9f9f9", fontWeight: "900" },
-    },
+    dataGrid: { border: "none", "& .MuiDataGrid-columnHeaders": { backgroundColor: "#f9f9f9", fontWeight: "900" } },
     gridAvatar: { width: "44px", height: "44px", borderRadius: "4px" },
-    actionBox: { display: "flex", gap: "4px" },
+    actionBox: { display: "flex", gap: "4px", alignItems: "center" },
     editBtn: { color: "#1b5e20" },
     deleteBtn: { color: "#d32f2f" },
+    verifyBtn: { color: "#2e7d32" },
     modalTitle: { fontWeight: "900", color: "#1b5e20", textAlign: "left" },
     photoUploadArea: { display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" },
     formAvatar: { width: "150px", height: "150px", border: "2px solid #e0e0e0" },
@@ -489,14 +464,7 @@ const styles = {
             "body *": { visibility: "hidden" },
             ".print-only, .print-only *": { visibility: "visible", display: "block !important" },
             ".print-only": { position: "absolute", left: 0, top: 0, width: "100%" },
-            ".print-header": { 
-                display: "flex !important", 
-                justifyContent: "space-between", 
-                alignItems: "center", 
-                borderBottom: "2px solid #1b5e20", 
-                paddingBottom: "10px", 
-                marginBottom: "20px" 
-            },
+            ".print-header": { display: "flex !important", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #1b5e20", paddingBottom: "10px", marginBottom: "20px" },
             ".agro-brand": { fontSize: "28px", fontWeight: "900", color: "#1b5e20" },
             ".print-date": { fontSize: "14px", fontWeight: "bold" },
             ".print-table": { width: "100%", borderCollapse: "collapse", display: "table !important" },

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import axiosInstance, { getCookie, eraseCookie } from "./api/axios"; // Import your updated axios logic
 
 const DashboardLayout = () => {
     const [isExpanded, setIsExpanded] = useState(true);
@@ -7,10 +8,28 @@ const DashboardLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const handleLogout = () => {
-        localStorage.removeItem("access_token"); 
-        localStorage.removeItem("refresh_token");
-        navigate("/login"); 
+    // UPDATED: Logic to call backend logout and clear cookies
+    const handleLogout = async () => {
+        try {
+            const refreshToken = getCookie('refresh_token');
+            
+            if (refreshToken) {
+                // Call your specific backend LogoutView
+                await axiosInstance.post("/admin-api/logout/", { 
+                    refresh: refreshToken 
+                });
+            }
+        } catch (err) {
+            // Silently handle if token is already expired or invalid
+            console.error("Logout session cleanup:", err);
+        } finally {
+            // Clean up cookies locally regardless of API success
+            eraseCookie('access_token');
+            eraseCookie('refresh_token');
+            
+            // Redirect to login
+            navigate("/login"); 
+        }
     };
 
     const getActiveStyle = ({ isActive }) => ({
@@ -60,6 +79,10 @@ const DashboardLayout = () => {
                     <NavLink to="/admin-dashboard/stock" style={getActiveStyle}>
                         {isExpanded ? "STOCK REGISTRATION" : "STK"}
                     </NavLink>
+
+                    <NavLink to="/admin-dashboard/crop-listing" style={getActiveStyle}>
+                        {isExpanded ? "STOCK LISTING" : "LST"}
+                    </NavLink>
                     
                     {isExpanded && <div style={styles.sectionLabelStyle}>PARTNERS</div>}
 
@@ -71,9 +94,17 @@ const DashboardLayout = () => {
                         {isExpanded ? "WHOLESALER STOCK" : "WST"}
                     </NavLink>
 
-                    
                     <NavLink to="/admin-dashboard/wholesaler-stock-detail" style={getActiveStyle}>
                         {isExpanded ? "WHOLESALER STOCK DETAIL" : "WSD"}
+                    </NavLink>
+
+                    <NavLink to="/admin-dashboard/wholesaler-bidding/1" style={getActiveStyle}>
+                        {isExpanded ? "WHOLESALER BIDDING" : "BID"}
+                    </NavLink>
+
+                    {/* WHOLESALER ORDERS ADDED HERE */}
+                    <NavLink to="/admin-dashboard/wholesaler-orders" style={getActiveStyle}>
+                        {isExpanded ? "WHOLESALER ORDERS" : "ORD"}
                     </NavLink>
                 </nav>
 
@@ -84,7 +115,6 @@ const DashboardLayout = () => {
                 </div>
             </aside>
 
-            
             <main style={{
                 ...styles.mainContentStyle,
                 marginLeft: isExpanded ? '240px' : '70px',

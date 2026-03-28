@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-
 const setCookie = (name, value, days) => {
     let expires = "";
     if (days) {
@@ -8,7 +7,6 @@ const setCookie = (name, value, days) => {
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         expires = "; expires=" + date.toUTCString();
     }
-
 
     document.cookie = `${name}=${value || ""}${expires}; path=/; SameSite=Lax; Secure`;
 };
@@ -28,10 +26,9 @@ const eraseCookie = (name) => {
     document.cookie = name + '=; Max-Age=-99999999; path=/;';
 };
 
-
-
 const axiosInstance = axios.create({
-    baseURL: 'http://16.16.201.131/',
+    // baseURL: 'http://16.16.201.131/',
+    baseURL: 'http://127.0.0.1:8000/',
     timeout: 20000,
     headers: {
         'Content-Type': 'application/json',
@@ -63,35 +60,38 @@ axiosInstance.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
+        
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
-
 
             const refreshToken = getCookie('refresh_token');
 
             if (refreshToken) {
                 try {
-
-                    const response = await axios.post('http://16.16.201.131/admin-api/token/refresh/', {
+                    
+                    
+                    const response = await axios.post(`${axiosInstance.defaults.baseURL}admin-api/token/refresh/`, {
                         refresh: refreshToken,
                     });
 
                     const { access } = response.data;
 
-
                     setCookie('access_token', access, 1);
 
+                    
                     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${access}`;
                     originalRequest.headers['Authorization'] = `Bearer ${access}`;
 
                     return axiosInstance(originalRequest);
                 } catch (refreshError) {
-                    console.error("Session expired.");
+                    
+                    console.error("Session expired or blacklisted.");
                     eraseCookie('access_token');
                     eraseCookie('refresh_token');
                     window.location.href = '/login';
                 }
             } else {
+                
                 window.location.href = '/login';
             }
         }

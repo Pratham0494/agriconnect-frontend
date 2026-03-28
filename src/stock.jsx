@@ -280,7 +280,7 @@ function StockList() {
                     rowCount={rowCount} paginationMode="server" sortingMode="server" filterMode="server"
                     paginationModel={paginationModel} onPaginationModelChange={setPaginationModel}
                     onSortModelChange={setSortModel} onFilterModelChange={setFilterModel}
-                    autoHeight sx={styles.dataGrid} pageSizeOptions={[10, 25, 50]}
+                    autoHeight sx={styles.dataGrid} pageSizeOptions={[10, 25, 50, 100]}
                     disableRowSelectionOnClick
                 />
             </Paper>

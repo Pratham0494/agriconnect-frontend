@@ -14,13 +14,21 @@ import StockList from './stock.jsx';
 import WholesalerList from './WholesalerList.jsx';
 import FarmerStock from './farmerstock.jsx'; 
 
+import CropListing from './CropListing.jsx'; 
 
 import WholesalerStockMaster from './WholesalerStockMaster.jsx'; 
 
 import WholesalerStockDetail from './WholesalerStockDetail.jsx'; 
 
+
+import WholesalerBidding from './WholesalerBidding.jsx';
+
+
+import WholesalerOrders from './WholesalerOrders.jsx';
+
 const ProtectedRoute = ({ children }) => {
-  const token = getCookie("access_token");
+
+  const token = getCookie("access_token") || localStorage.getItem("access_token");
   
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -65,17 +73,24 @@ function App() {
             <Route path="crops" element={<CropList />} />
             <Route path="farmer-stock" element={<FarmerStock />} />
             <Route path="stock" element={<StockList />} />
+
+            <Route path="crop-listing" element={<CropListing />} />
             
             <Route path="wholesalers" element={<WholesalerList />} />
             
-            
             <Route path="wholesaler-stock" element={<WholesalerStockMaster />} />
             
+            <Route path="wholesaler-stock-detail" element={<WholesalerStockDetail />} /> 
+                 
             
-            <Route path="wholesaler-stock-detail" element={<WholesalerStockDetail />} />
+            <Route path="wholesaler-bidding/:l_id" element={<WholesalerBidding />} />
+
+            
+            <Route path="wholesaler-orders" element={<WholesalerOrders />} />
             
           </Route>
 
+          
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
