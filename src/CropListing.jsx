@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom"; // Added for redirection
+import { useNavigate } from "react-router-dom";
 import { 
     DataGrid, 
     getGridNumericOperators, 
@@ -9,7 +9,7 @@ import {
 import {
     Box, TextField, Button, Dialog, DialogTitle, DialogContent,
     DialogActions, Grid, MenuItem, IconButton, Typography, Select,
-    FormControl, InputLabel, GlobalStyles, InputAdornment, Autocomplete, Chip
+    FormControl, InputLabel, GlobalStyles, InputAdornment, Autocomplete, Chip, Tooltip
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -17,7 +17,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import PrintIconDefault from "@mui/icons-material/Print";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
-import GavelIcon from "@mui/icons-material/Gavel"; // Icon for Bidding
+import GavelIcon from "@mui/icons-material/Gavel";
 
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery"; 
@@ -33,11 +33,6 @@ const styles = {
         color: "#2e7d32", fontWeight: "900", border: "2px solid #2e7d32", 
         borderRadius: "2px", height: "40px",
         "&:hover": { border: "2px solid #1b5e20", backgroundColor: "rgba(46, 125, 50, 0.04)" }
-    },
-    bidBtn: { 
-        color: "#2e7d32", fontWeight: "900", border: "2px solid #2e7d32", 
-        borderRadius: "2px", height: "40px",
-        "&:hover": { border: "2px solid #1b5e20", backgroundColor: "rgba(21, 101, 192, 0.04)" }
     },
     addButton: { 
         backgroundColor: "#2e7d32", color: "#ffffff", fontWeight: "800", 
@@ -92,7 +87,7 @@ const singleSelectOperators = getGridSingleSelectOperators().filter(
 );
 
 const CropListing = () => {
-    const navigate = useNavigate(); // Hook for navigation
+    const navigate = useNavigate();
     const [rows, setRows] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -108,14 +103,8 @@ const CropListing = () => {
     const [selectedId, setSelectedId] = useState(null);
     const [formData, setFormData] = useState({
         stock_detail: "",
-        category: "Grains",
-        variety: "",
         qty_available: "",
-        unit: "kg",
-        min_order_quantity: "",
         price_per_unit: "",
-        harvest_date: "",
-        location_warehouse: "",
         status: "O"
     });
 
@@ -188,35 +177,18 @@ const CropListing = () => {
 
     const resetForm = () => {
         setFormData({ 
-            stock_detail: "", category: "Grains", variety: "", qty_available: "", 
-            unit: "kg", min_order_quantity: "", price_per_unit: "", 
-            harvest_date: "", location_warehouse: "", status: "O" 
+            stock_detail: "", 
+            qty_available: "", 
+            price_per_unit: "", 
+            status: "O" 
         });
         setSelectedId(null);
     };
 
     const columns = [
-        { 
-            field: "l_id", 
-            headerName: "ID", 
-            width: 70, 
-            type: "number",
-            filterOperators: numericOperators
-        },
-        { 
-            field: "crop_name", 
-            headerName: "CROP", 
-            width: 160, 
-            type: "string",
-            filterOperators: stringOperators
-        },
-        { 
-            field: "farmer_name", 
-            headerName: "FARMER", 
-            width: 180, 
-            type: "string",
-            filterOperators: stringOperators
-        },
+        { field: "l_id", headerName: "ID", width: 70, type: "number", filterOperators: numericOperators },
+        { field: "crop_name", headerName: "CROP", width: 160, type: "string", filterOperators: stringOperators },
+        { field: "farmer_name", headerName: "FARMER", width: 180, type: "string", filterOperators: stringOperators },
         { 
             field: "qty_available", 
             headerName: "QTY FOR SALE", 
@@ -253,19 +225,32 @@ const CropListing = () => {
         {
             field: "actions", 
             headerName: "ACTIONS", 
-            width: 120, 
+            width: 160, // Width adjusted to fit three buttons comfortably
             sortable: false,
             filterable: false,
             renderCell: (params) => (
-                <Box className="no-print">
+                <Box className="no-print" sx={{ display: 'flex', gap: '4px' }}>
+                    {/* Bidding Redirect Button */}
+                    <Tooltip title="Go to Bidding">
+                        <IconButton 
+                            color="success" 
+                            onClick={() => navigate(`/admin-dashboard/wholesaler-bidding/${params.row.l_id}`)}
+                        >
+                            <GavelIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+
                     <IconButton color="primary" onClick={() => { 
                         setSelectedId(params.row.l_id); 
                         setFormData({ 
-                            ...params.row, 
-                            stock_detail: params.row.stock_detail?.id || params.row.stock_detail_id || params.row.stock_detail 
+                            stock_detail: params.row.stock_detail?.id || params.row.stock_detail_id || params.row.stock_detail,
+                            qty_available: params.row.qty_available,
+                            price_per_unit: params.row.price_per_unit,
+                            status: params.row.status
                         }); 
                         setOpen(true); 
                     }}><EditIcon fontSize="small" /></IconButton>
+                    
                     <IconButton color="error" onClick={() => handleDelete(params.row.l_id)}><DeleteIcon fontSize="small" /></IconButton>
                 </Box>
             )
@@ -279,18 +264,7 @@ const CropListing = () => {
             <Box sx={styles.header}>
                 <Typography variant="h4" sx={styles.title}>CROP LISTING MANAGEMENT</Typography>
                 <Box sx={{ display: "flex", gap: "16px" }} className="no-print">
-                    {/* REDIRECT TO BIDDING BUTTON */}
-                    <Button 
-                        variant="outlined" 
-                        startIcon={<GavelIcon />} 
-                        sx={styles.bidBtn} 
-                        onClick={() => navigate("/admin-dashboard/wholesaler-bidding/1")}
-                    >
-                        BIDDING
-                    </Button>
-
                     <Button variant="outlined" startIcon={<PrintIconDefault />} sx={styles.printBtn} onClick={() => window.print()}>PRINT</Button>
-                    
                     <TextField
                         size="small" placeholder="Search crop, farmer, or status..." sx={styles.searchField} 
                         value={searchText} onChange={(e) => setSearchText(e.target.value)}
@@ -325,7 +299,7 @@ const CropListing = () => {
                 />
             </Box>
 
-            <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+            <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle sx={styles.dialogTitle}>{selectedId ? "EDIT CROP LISTING" : "ADD NEW CROP LISTING"}</DialogTitle>
                 <DialogContent dividers sx={{ p: 4 }}>
                     
@@ -341,12 +315,6 @@ const CropListing = () => {
                                         setFormData({
                                             ...formData, 
                                             stock_detail: val.id || val.stock_id,
-                                            category: val.category || formData.category,
-                                            variety: val.variety || "",
-                                            unit: val.unit || "kg",
-                                            price_per_unit: val.price_per_unit || "",
-                                            harvest_date: val.harvested_date || "",
-                                            location_warehouse: val.stored_location || val.location || ""
                                         });
                                     } else {
                                         resetForm();
@@ -368,56 +336,19 @@ const CropListing = () => {
                     </Box>
 
                     <Grid container spacing={3}>
-                        <Grid item xs={3}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Category</InputLabel>
-                                <Select name="category" value={formData.category} onChange={handleChange} label="Category">
-                                    <MenuItem value="Grains">Grains</MenuItem>
-                                    <MenuItem value="Vegetables">Vegetables</MenuItem>
-                                    <MenuItem value="Fruits">Fruits</MenuItem>
-                                    <MenuItem value="Spices">Spices</MenuItem>
-                                    <MenuItem value="Pulses">Pulses</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={3}>
-                            <TextField fullWidth name="variety" label="Variety" size="small" value={formData.variety} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={4}>
+                        <Grid item xs={6}>
                             <TextField 
                                 fullWidth name="qty_available" label="Quantity for Sale" size="small" type="number" 
                                 value={formData.qty_available} onChange={handleChange}
-                                helperText="Cannot exceed total stock quantity"
                             />
                         </Grid>
-                        <Grid item xs={2}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Unit</InputLabel>
-                                <Select name="unit" value={formData.unit} onChange={handleChange} label="Unit">
-                                    <MenuItem value="kg">kg</MenuItem>
-                                    <MenuItem value="TON">TON</MenuItem>
-                                    <MenuItem value="Quintal">Quintal</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={3}>
-                            <TextField fullWidth name="min_order_quantity" label="Min Order Qty" size="small" type="number" value={formData.min_order_quantity} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={3}>
+                        <Grid item xs={6}>
                             <TextField 
                                 fullWidth name="price_per_unit" label="Price per Unit" size="small" type="number" 
                                 value={formData.price_per_unit} onChange={handleChange}
                                 InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
                             />
                         </Grid>
-                        <Grid item xs={3}>
-                            <TextField fullWidth name="harvest_date" label="Harvest Date" size="small" type="date" InputLabelProps={{ shrink: true }} value={formData.harvest_date} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={3}>
-                            <TextField fullWidth name="location_warehouse" label="Location / Warehouse" size="small" value={formData.location_warehouse} onChange={handleChange} />
-                        </Grid>
-
                         <Grid item xs={12}>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Listing Status</InputLabel>
