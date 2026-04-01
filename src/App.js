@@ -20,9 +20,8 @@ import WholesalerStockMaster from './WholesalerStockMaster.jsx';
 
 import WholesalerStockDetail from './WholesalerStockDetail.jsx'; 
 
-
+// Import added back so the redirect works
 import WholesalerBidding from './WholesalerBidding.jsx';
-
 
 import WholesalerOrders from './WholesalerOrders.jsx';
 
@@ -81,16 +80,14 @@ function App() {
             <Route path="wholesaler-stock" element={<WholesalerStockMaster />} />
             
             <Route path="wholesaler-stock-detail" element={<WholesalerStockDetail />} /> 
-                 
             
+            {/* Added this back: This is the destination for your BIDDING button */}
             <Route path="wholesaler-bidding/:l_id" element={<WholesalerBidding />} />
-
             
             <Route path="wholesaler-orders" element={<WholesalerOrders />} />
             
           </Route>
 
-          
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

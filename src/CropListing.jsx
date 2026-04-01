@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom"; // Added for redirection
 import { 
     DataGrid, 
     getGridNumericOperators, 
@@ -16,6 +17,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import PrintIconDefault from "@mui/icons-material/Print";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
+import GavelIcon from "@mui/icons-material/Gavel"; // Icon for Bidding
 
 import axiosInstance from "./api/axios"; 
 import { useMuiDrfQuery } from "./hooks/useMuiDrfQuery"; 
@@ -31,6 +33,11 @@ const styles = {
         color: "#2e7d32", fontWeight: "900", border: "2px solid #2e7d32", 
         borderRadius: "2px", height: "40px",
         "&:hover": { border: "2px solid #1b5e20", backgroundColor: "rgba(46, 125, 50, 0.04)" }
+    },
+    bidBtn: { 
+        color: "#2e7d32", fontWeight: "900", border: "2px solid #2e7d32", 
+        borderRadius: "2px", height: "40px",
+        "&:hover": { border: "2px solid #1b5e20", backgroundColor: "rgba(21, 101, 192, 0.04)" }
     },
     addButton: { 
         backgroundColor: "#2e7d32", color: "#ffffff", fontWeight: "800", 
@@ -72,7 +79,6 @@ const styles = {
     }
 };
 
-// --- Custom Filter Operators to match useMuiDrfQuery logic ---
 const numericOperators = getGridNumericOperators().filter(
     (op) => ['=', '!=', '>', '>=', '<', '<='].includes(op.value)
 );
@@ -86,19 +92,18 @@ const singleSelectOperators = getGridSingleSelectOperators().filter(
 );
 
 const CropListing = () => {
+    const navigate = useNavigate(); // Hook for navigation
     const [rows, setRows] = useState([]);
     const [totalRows, setTotalRows] = useState(0);
     const [loading, setLoading] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [stockDetailsList, setStockDetailsList] = useState([]);
 
-    // DataGrid State
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
     const [sortModel, setSortModel] = useState([]);
     const [filterModel, setFilterModel] = useState({ items: [] }); 
     const [searchText, setSearchText] = useState("");
 
-    // Form State
     const [open, setOpen] = useState(false);
     const [selectedId, setSelectedId] = useState(null);
     const [formData, setFormData] = useState({
@@ -114,7 +119,6 @@ const CropListing = () => {
         status: "O"
     });
 
-    // Hook integration for server-side logic
     const queryParams = useMuiDrfQuery({
         paginationModel,
         sortModel,
@@ -275,7 +279,18 @@ const CropListing = () => {
             <Box sx={styles.header}>
                 <Typography variant="h4" sx={styles.title}>CROP LISTING MANAGEMENT</Typography>
                 <Box sx={{ display: "flex", gap: "16px" }} className="no-print">
+                    {/* REDIRECT TO BIDDING BUTTON */}
+                    <Button 
+                        variant="outlined" 
+                        startIcon={<GavelIcon />} 
+                        sx={styles.bidBtn} 
+                        onClick={() => navigate("/admin-dashboard/wholesaler-bidding/1")}
+                    >
+                        BIDDING
+                    </Button>
+
                     <Button variant="outlined" startIcon={<PrintIconDefault />} sx={styles.printBtn} onClick={() => window.print()}>PRINT</Button>
+                    
                     <TextField
                         size="small" placeholder="Search crop, farmer, or status..." sx={styles.searchField} 
                         value={searchText} onChange={(e) => setSearchText(e.target.value)}

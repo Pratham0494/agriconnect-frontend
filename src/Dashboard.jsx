@@ -98,11 +98,9 @@ const DashboardLayout = () => {
                         {isExpanded ? "WHOLESALER STOCK DETAIL" : "WSD"}
                     </NavLink>
 
-                    <NavLink to="/admin-dashboard/wholesaler-bidding/1" style={getActiveStyle}>
-                        {isExpanded ? "WHOLESALER BIDDING" : "BID"}
-                    </NavLink>
+                    {/* WHOLESALER BIDDING REMOVED FROM HERE */}
 
-                    {/* WHOLESALER ORDERS ADDED HERE */}
+                    {/* WHOLESALER ORDERS */}
                     <NavLink to="/admin-dashboard/wholesaler-orders" style={getActiveStyle}>
                         {isExpanded ? "WHOLESALER ORDERS" : "ORD"}
                     </NavLink>
